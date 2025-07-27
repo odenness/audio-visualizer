@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Visualizer for YouTube</title>
+    <title>Audio Visualizer for YouTube - Enhanced</title>
     <style>
         body {
             margin: 0;
@@ -38,6 +38,7 @@
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
+            max-width: 90vw;
         }
 
         .control-group {
@@ -46,6 +47,15 @@
             border-radius: 10px;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
+            min-width: 200px;
+        }
+
+        .control-group h4 {
+            margin: 0 0 10px 0;
+            color: #fff;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 5px;
         }
 
         input[type="file"] {
@@ -56,11 +66,26 @@
             border-radius: 5px;
             cursor: pointer;
             transition: all 0.3s ease;
+            width: 100%;
         }
 
         input[type="file"]:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
         }
 
         button {
@@ -92,6 +117,37 @@
             padding: 8px;
             border-radius: 5px;
             margin: 5px;
+            width: 100%;
+        }
+
+        label {
+            color: white;
+            font-size: 12px;
+            display: block;
+            margin: 5px 0 2px 0;
+        }
+
+        .color-preset {
+            display: flex;
+            gap: 5px;
+            margin: 5px 0;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            padding: 5px 10px;
+            font-size: 11px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: none;
+            box-shadow: none;
         }
 
         .info {
@@ -104,6 +160,19 @@
             border-radius: 5px;
             font-size: 12px;
         }
+
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .slider-group span {
+            color: white;
+            font-size: 11px;
+            min-width: 30px;
+        }
     </style>
 </head>
 <body>
@@ -112,16 +181,18 @@
         
         <div class="controls">
             <div class="control-group">
+                <h4>📁 Audio Controls</h4>
                 <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.ogg,.m4a">
                 <button id="playBtn" disabled>Play</button>
                 <button id="pauseBtn" disabled>Pause</button>
             </div>
             
             <div class="control-group">
-                <label style="color: white;">Visualization:</label>
+                <h4>🎨 Visualization</h4>
+                <label>Mode:</label>
                 <select id="visualMode">
                     <option value="bars">Classic Bars</option>
-                    <option value="bars_mirror">Mirror Bars</option>
+                    <option value="bars_mirror">Mirror Bars ⭐</option>
                     <option value="bars_center">Center Bars</option>
                     <option value="bars_radial">Radial Bars</option>
                     <option value="bars_wave">Wave Bars</option>
@@ -132,11 +203,65 @@
                     <option value="spiral">Spiral</option>
                 </select>
             </div>
+
+            <div class="control-group">
+                <h4>🎨 Color Scheme</h4>
+                <label>Color Mode:</label>
+                <select id="colorMode">
+                    <option value="rainbow">Rainbow Spectrum</option>
+                    <option value="custom">Custom Colors</option>
+                    <option value="gradient">Two-Color Gradient</option>
+                    <option value="monochrome">Monochrome</option>
+                </select>
+                
+                <div id="customColors" style="display: none;">
+                    <label>Primary:</label>
+                    <input type="color" id="color1" value="#ff6b6b">
+                    <label>Secondary:</label>
+                    <input type="color" id="color2" value="#4ecdc4">
+                    <label>Accent:</label>
+                    <input type="color" id="color3" value="#45b7d1">
+                </div>
+
+                <div class="color-preset">
+                    <button class="preset-btn" onclick="setColorPreset('neon')">Neon</button>
+                    <button class="preset-btn" onclick="setColorPreset('ocean')">Ocean</button>
+                    <button class="preset-btn" onclick="setColorPreset('sunset')">Sunset</button>
+                    <button class="preset-btn" onclick="setColorPreset('cyberpunk')">Cyber</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h4>📏 Size & Scale</h4>
+                <div class="slider-group">
+                    <label>Visualizer Scale:</label>
+                    <input type="range" id="visualizerScale" min="0.3" max="2" step="0.1" value="1">
+                    <span id="scaleValue">1.0x</span>
+                </div>
+                
+                <div class="slider-group">
+                    <label>Bar Sensitivity:</label>
+                    <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1">
+                    <span id="sensitivityValue">1.0x</span>
+                </div>
+            </div>
             
             <div class="control-group">
-                <label style="color: white;">Background:</label>
+                <h4>🖼️ Background</h4>
                 <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
                 <button id="clearBg">Clear BG</button>
+                
+                <div class="slider-group">
+                    <label>BG Opacity:</label>
+                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
+                    <span id="opacityValue">0.7</span>
+                </div>
+                
+                <div class="slider-group">
+                    <label>BG Scale:</label>
+                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
+                    <span id="bgScaleValue">1.0x</span>
+                </div>
             </div>
         </div>
 
@@ -164,7 +289,13 @@
                 this.backgroundImage = null;
                 
                 this.particles = [];
-                this.visualMode = 'bars';
+                this.visualMode = 'bars_mirror';
+                this.colorMode = 'rainbow';
+                this.customColors = ['#ff6b6b', '#4ecdc4', '#45b7d1'];
+                this.visualizerScale = 1;
+                this.sensitivity = 1;
+                this.bgOpacity = 0.7;
+                this.bgScale = 1;
                 
                 this.setupCanvas();
                 this.setupEventListeners();
@@ -186,9 +317,11 @@
                 const playBtn = document.getElementById('playBtn');
                 const pauseBtn = document.getElementById('pauseBtn');
                 const visualMode = document.getElementById('visualMode');
+                const colorMode = document.getElementById('colorMode');
                 const backgroundInput = document.getElementById('backgroundImage');
                 const clearBgBtn = document.getElementById('clearBg');
                 
+                // Audio controls
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -200,6 +333,7 @@
                 playBtn.addEventListener('click', () => this.play());
                 pauseBtn.addEventListener('click', () => this.pause());
                 
+                // Visual controls
                 visualMode.addEventListener('change', (e) => {
                     this.visualMode = e.target.value;
                     if (this.visualMode === 'particles') {
@@ -207,13 +341,53 @@
                     }
                 });
                 
+                colorMode.addEventListener('change', (e) => {
+                    this.colorMode = e.target.value;
+                    const customDiv = document.getElementById('customColors');
+                    customDiv.style.display = e.target.value === 'custom' || e.target.value === 'gradient' ? 'block' : 'none';
+                });
+                
+                // Color inputs
+                document.getElementById('color1').addEventListener('change', (e) => {
+                    this.customColors[0] = e.target.value;
+                });
+                document.getElementById('color2').addEventListener('change', (e) => {
+                    this.customColors[1] = e.target.value;
+                });
+                document.getElementById('color3').addEventListener('change', (e) => {
+                    this.customColors[2] = e.target.value;
+                });
+                
+                // Scale controls
+                document.getElementById('visualizerScale').addEventListener('input', (e) => {
+                    this.visualizerScale = parseFloat(e.target.value);
+                    document.getElementById('scaleValue').textContent = this.visualizerScale.toFixed(1) + 'x';
+                });
+                
+                document.getElementById('sensitivity').addEventListener('input', (e) => {
+                    this.sensitivity = parseFloat(e.target.value);
+                    document.getElementById('sensitivityValue').textContent = this.sensitivity.toFixed(1) + 'x';
+                });
+                
+                // Background controls
                 backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
                 clearBgBtn.addEventListener('click', () => this.clearBackground());
+                
+                document.getElementById('bgOpacity').addEventListener('input', (e) => {
+                    this.bgOpacity = parseFloat(e.target.value);
+                    document.getElementById('opacityValue').textContent = this.bgOpacity.toFixed(1);
+                });
+                
+                document.getElementById('bgScale').addEventListener('input', (e) => {
+                    this.bgScale = parseFloat(e.target.value);
+                    document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
+                });
             }
             
             setupParticles() {
                 this.particles = [];
-                for (let i = 0; i < 100; i++) {
+                const particleCount = Math.floor(100 * this.visualizerScale);
+                for (let i = 0; i < particleCount; i++) {
                     this.particles.push({
                         x: Math.random() * this.canvas.width,
                         y: Math.random() * this.canvas.height,
@@ -245,6 +419,45 @@
                 this.backgroundImage = null;
                 document.getElementById('backgroundImage').value = '';
                 console.log('Background cleared');
+            }
+            
+            getColor(index, total, intensity = 1) {
+                switch (this.colorMode) {
+                    case 'rainbow':
+                        const hue = (index / total) * 360;
+                        const saturation = 70 + (intensity * 30);
+                        const lightness = 50 + (intensity * 30);
+                        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    
+                    case 'custom':
+                        const colorIndex = Math.floor((index / total) * this.customColors.length);
+                        return this.customColors[colorIndex] || this.customColors[0];
+                    
+                    case 'gradient':
+                        const ratio = index / total;
+                        const color1 = this.hexToRgb(this.customColors[0]);
+                        const color2 = this.hexToRgb(this.customColors[1]);
+                        const r = Math.floor(color1.r + (color2.r - color1.r) * ratio);
+                        const g = Math.floor(color1.g + (color2.g - color1.g) * ratio);
+                        const b = Math.floor(color1.b + (color2.b - color1.b) * ratio);
+                        return `rgba(${r}, ${g}, ${b}, ${intensity})`;
+                    
+                    case 'monochrome':
+                        const brightness = 50 + (intensity * 50);
+                        return `hsl(220, 30%, ${brightness}%)`;
+                    
+                    default:
+                        return `hsl(${(index / total) * 360}, 80%, 60%)`;
+                }
+            }
+            
+            hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : {r: 255, g: 107, b: 107};
             }
             
             loadAudio(file) {
@@ -340,9 +553,14 @@
             }
             
             draw() {
+                // Clear canvas
                 if (this.backgroundImage) {
-                    this.ctx.globalAlpha = 0.7;
-                    this.ctx.drawImage(this.backgroundImage, 0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.globalAlpha = this.bgOpacity;
+                    const scaledWidth = this.canvas.width * this.bgScale;
+                    const scaledHeight = this.canvas.height * this.bgScale;
+                    const offsetX = (this.canvas.width - scaledWidth) / 2;
+                    const offsetY = (this.canvas.height - scaledHeight) / 2;
+                    this.ctx.drawImage(this.backgroundImage, offsetX, offsetY, scaledWidth, scaledHeight);
                     this.ctx.globalAlpha = 1.0;
                     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -351,8 +569,17 @@
                     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 }
                 
+                // Apply scaling transform
+                this.ctx.save();
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                this.ctx.translate(centerX, centerY);
+                this.ctx.scale(this.visualizerScale, this.visualizerScale);
+                this.ctx.translate(-centerX, -centerY);
+                
                 if (!this.dataArray || this.dataArray.every(val => val === 0)) {
                     this.drawDefaultAnimation();
+                    this.ctx.restore();
                     return;
                 }
                 
@@ -368,6 +595,8 @@
                     case 'particles': this.drawParticles(); break;
                     case 'spiral': this.drawSpiral(); break;
                 }
+                
+                this.ctx.restore();
             }
             
             drawDefaultAnimation() {
@@ -376,7 +605,7 @@
                 const time = Date.now() * 0.005;
                 const radius = 50 + Math.sin(time) * 20;
                 
-                this.ctx.strokeStyle = `hsl(${time * 50 % 360}, 70%, 60%)`;
+                this.ctx.strokeStyle = this.getColor(time * 10, 360, 0.8);
                 this.ctx.lineWidth = 3;
                 this.ctx.beginPath();
                 this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -393,15 +622,14 @@
                 let x = 0;
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
-                    const hue = (i / this.dataArray.length) * 360;
-                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
-                    const lightness = 50 + (this.dataArray[i] / 255) * 30;
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
+                    const intensity = this.dataArray[i] / 255;
                     
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity);
                     this.ctx.fillRect(x, this.canvas.height - barHeight, barWidth - 2, barHeight);
                     
-                    this.ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.3)`;
+                    // Top reflection
+                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity * 0.3);
                     this.ctx.fillRect(x, 0, barWidth - 2, barHeight * 0.5);
                     
                     x += barWidth;
@@ -413,15 +641,24 @@
                 let x = 0;
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.4;
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.4 * this.sensitivity;
                     const centerY = this.canvas.height / 2;
-                    const hue = (i / this.dataArray.length) * 360;
-                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
-                    const lightness = 50 + (this.dataArray[i] / 255) * 30;
+                    const intensity = this.dataArray[i] / 255;
                     
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    const color = this.getColor(i, this.dataArray.length, intensity);
+                    this.ctx.fillStyle = color;
+                    
+                    // Bottom bars
+                    this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
+                    // Top bars (mirrored)
+                    this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
+                    
+                    // Add glow effect for mirror bars
+                    this.ctx.shadowBlur = 10;
+                    this.ctx.shadowColor = color;
                     this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
                     this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
+                    this.ctx.shadowBlur = 0;
                     
                     x += barWidth;
                 }
@@ -432,10 +669,10 @@
                 const centerX = this.canvas.width / 2;
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
-                    const hue = (i / this.dataArray.length) * 360;
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
+                    const intensity = this.dataArray[i] / 255;
                     
-                    this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity);
                     
                     const leftX = centerX - (i + 1) * barWidth;
                     if (leftX >= 0) {
@@ -456,17 +693,18 @@
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
                     const angle = (i / this.dataArray.length) * Math.PI * 2;
-                    const barLength = (this.dataArray[i] / 255) * 200;
+                    const barLength = (this.dataArray[i] / 255) * 200 * this.sensitivity;
+                    const intensity = this.dataArray[i] / 255;
                     
                     const x1 = centerX + Math.cos(angle) * baseRadius;
                     const y1 = centerY + Math.sin(angle) * baseRadius;
                     const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
                     const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
                     
-                    const hue = (i / this.dataArray.length) * 360;
+                    const color = this.getColor(i, this.dataArray.length, intensity);
                     const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
-                    gradient.addColorStop(0, `hsl(${hue}, 80%, 40%)`);
-                    gradient.addColorStop(1, `hsl(${hue}, 80%, 80%)`);
+                    gradient.addColorStop(0, color);
+                    gradient.addColorStop(1, color.replace(')', ', 0.1)').replace('rgb', 'rgba'));
                     
                     this.ctx.strokeStyle = gradient;
                     this.ctx.lineWidth = 4;
@@ -483,140 +721,6 @@
                 const time = Date.now() * 0.002;
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
-                    const baseHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.6;
+                    const baseHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.6 * this.sensitivity;
                     const wave = Math.sin(time + i * 0.1) * 20;
-                    const barHeight = baseHeight + wave;
-                    
-                    const hue = (time * 50 + i * 2) % 360;
-                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
-                    const lightness = 50 + wave;
-                    
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                    this.ctx.fillRect(x, this.canvas.height - Math.abs(barHeight), barWidth - 2, Math.abs(barHeight));
-                    
-                    x += barWidth;
-                }
-            }
-            
-            drawBarsStacked() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
-                
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const totalHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
-                    const segments = 5;
-                    const segmentHeight = totalHeight / segments;
-                    
-                    for (let j = 0; j < segments; j++) {
-                        const hue = (i / this.dataArray.length) * 360 + j * 30;
-                        const alpha = 1 - (j * 0.15);
-                        
-                        this.ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
-                        this.ctx.fillRect(x, this.canvas.height - (j + 1) * segmentHeight, barWidth - 2, segmentHeight - 1);
-                    }
-                    
-                    x += barWidth;
-                }
-            }
-            
-            drawCircle() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
-                const radius = 100;
-                
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const angle = (i / this.dataArray.length) * Math.PI * 2;
-                    const amplitude = (this.dataArray[i] / 255) * 200;
-                    
-                    const x1 = centerX + Math.cos(angle) * radius;
-                    const y1 = centerY + Math.sin(angle) * radius;
-                    const x2 = centerX + Math.cos(angle) * (radius + amplitude);
-                    const y2 = centerY + Math.sin(angle) * (radius + amplitude);
-                    
-                    const hue = (i / this.dataArray.length) * 360;
-                    this.ctx.strokeStyle = `hsl(${hue}, 80%, 60%)`;
-                    this.ctx.lineWidth = 3;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x1, y1);
-                    this.ctx.lineTo(x2, y2);
-                    this.ctx.stroke();
-                }
-            }
-            
-            drawWaveform() {
-                this.ctx.strokeStyle = '#00ff88';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                
-                const sliceWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
-                
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const v = this.dataArray[i] / 128;
-                    const y = v * this.canvas.height / 2;
-                    
-                    if (i === 0) {
-                        this.ctx.moveTo(x, y);
-                    } else {
-                        this.ctx.lineTo(x, y);
-                    }
-                    
-                    x += sliceWidth;
-                }
-                
-                this.ctx.stroke();
-            }
-            
-            drawParticles() {
-                const avgFreq = this.dataArray.reduce((a, b) => a + b) / this.dataArray.length;
-                
-                this.particles.forEach((particle, index) => {
-                    const freqData = this.dataArray[index % this.dataArray.length];
-                    const intensity = freqData / 255;
-                    
-                    particle.x += particle.vx * (1 + intensity);
-                    particle.y += particle.vy * (1 + intensity);
-                    particle.size = 1 + intensity * 5;
-                    
-                    if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
-                    if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
-                    
-                    this.ctx.fillStyle = `hsla(${particle.hue + avgFreq}, 80%, 60%, ${intensity})`;
-                    this.ctx.beginPath();
-                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
-            }
-            
-            drawSpiral() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
-                
-                this.ctx.strokeStyle = '#ff6b6b';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const angle = (i / this.dataArray.length) * Math.PI * 8;
-                    const amplitude = (this.dataArray[i] / 255) * 3;
-                    const radius = i * 2 + amplitude * 50;
-                    
-                    const x = centerX + Math.cos(angle) * radius;
-                    const y = centerY + Math.sin(angle) * radius;
-                    
-                    if (i === 0) {
-                        this.ctx.moveTo(x, y);
-                    } else {
-                        this.ctx.lineTo(x, y);
-                    }
-                }
-                
-                this.ctx.stroke();
-            }
-        }
-        
-        // Initialize the visualizer
-        const visualizer = new AudioVisualizer();
-    </script>
-</body>
-</html>
+                    const barHeight = baseHeight + wave
