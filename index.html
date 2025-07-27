@@ -723,4 +723,177 @@
                 for (let i = 0; i < this.dataArray.length; i++) {
                     const baseHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.6 * this.sensitivity;
                     const wave = Math.sin(time + i * 0.1) * 20;
-                    const barHeight = baseHeight + wave
+                    const barHeight = baseHeight + wave;
+                    const intensity = this.dataArray[i] / 255;
+                    
+                    this.ctx.fillStyle = this.getColor(i + time * 50, this.dataArray.length, intensity);
+                    this.ctx.fillRect(x, this.canvas.height - Math.abs(barHeight), barWidth - 2, Math.abs(barHeight));
+                    
+                    x += barWidth;
+                }
+            }
+            
+            drawBarsStacked() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const totalHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
+                    const segments = 5;
+                    const segmentHeight = totalHeight / segments;
+                    const intensity = this.dataArray[i] / 255;
+                    
+                    for (let j = 0; j < segments; j++) {
+                        const alpha = 1 - (j * 0.15);
+                        const color = this.getColor(i + j * 10, this.dataArray.length, intensity * alpha);
+                        
+                        this.ctx.fillStyle = color;
+                        this.ctx.fillRect(x, this.canvas.height - (j + 1) * segmentHeight, barWidth - 2, segmentHeight - 1);
+                    }
+                    
+                    x += barWidth;
+                }
+            }
+            
+            drawCircle() {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const radius = 100;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const angle = (i / this.dataArray.length) * Math.PI * 2;
+                    const amplitude = (this.dataArray[i] / 255) * 200 * this.sensitivity;
+                    const intensity = this.dataArray[i] / 255;
+                    
+                    const x1 = centerX + Math.cos(angle) * radius;
+                    const y1 = centerY + Math.sin(angle) * radius;
+                    const x2 = centerX + Math.cos(angle) * (radius + amplitude);
+                    const y2 = centerY + Math.sin(angle) * (radius + amplitude);
+                    
+                    this.ctx.strokeStyle = this.getColor(i, this.dataArray.length, intensity);
+                    this.ctx.lineWidth = 3;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x1, y1);
+                    this.ctx.lineTo(x2, y2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawWaveform() {
+                this.ctx.strokeStyle = this.getColor(0, 1, 1);
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                
+                const sliceWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const v = (this.dataArray[i] / 128) * this.sensitivity;
+                    const y = v * this.canvas.height / 2;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                    
+                    x += sliceWidth;
+                }
+                
+                this.ctx.stroke();
+            }
+            
+            drawParticles() {
+                const avgFreq = this.dataArray.reduce((a, b) => a + b) / this.dataArray.length;
+                
+                this.particles.forEach((particle, index) => {
+                    const freqData = this.dataArray[index % this.dataArray.length];
+                    const intensity = (freqData / 255) * this.sensitivity;
+                    
+                    particle.x += particle.vx * (1 + intensity);
+                    particle.y += particle.vy * (1 + intensity);
+                    particle.size = 1 + intensity * 5;
+                    
+                    if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
+                    if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+                    
+                    this.ctx.fillStyle = this.getColor(particle.hue + avgFreq, 360, intensity);
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                });
+            }
+            
+            drawSpiral() {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                this.ctx.strokeStyle = this.getColor(0, 1, 1);
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const angle = (i / this.dataArray.length) * Math.PI * 8;
+                    const amplitude = (this.dataArray[i] / 255) * 3 * this.sensitivity;
+                    const radius = i * 2 + amplitude * 50;
+                    
+                    const x = centerX + Math.cos(angle) * radius;
+                    const y = centerY + Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                
+                this.ctx.stroke();
+            }
+        }
+        
+        // Color preset functions
+        function setColorPreset(preset) {
+            const color1 = document.getElementById('color1');
+            const color2 = document.getElementById('color2');
+            const color3 = document.getElementById('color3');
+            const colorMode = document.getElementById('colorMode');
+            
+            switch (preset) {
+                case 'neon':
+                    color1.value = '#ff0080';
+                    color2.value = '#00ff80';
+                    color3.value = '#8000ff';
+                    colorMode.value = 'custom';
+                    break;
+                case 'ocean':
+                    color1.value = '#006994';
+                    color2.value = '#00a8cc';
+                    color3.value = '#b3e5fc';
+                    colorMode.value = 'gradient';
+                    break;
+                case 'sunset':
+                    color1.value = '#ff4081';
+                    color2.value = '#ff8a50';
+                    color3.value = '#ffcc02';
+                    colorMode.value = 'gradient';
+                    break;
+                case 'cyberpunk':
+                    color1.value = '#ff006e';
+                    color2.value = '#00ffff';
+                    color3.value = '#ffbe0b';
+                    colorMode.value = 'custom';
+                    break;
+            }
+            
+            // Trigger change events
+            visualizer.customColors = [color1.value, color2.value, color3.value];
+            visualizer.colorMode = colorMode.value;
+            document.getElementById('customColors').style.display = 
+                colorMode.value === 'custom' || colorMode.value === 'gradient' ? 'block' : 'none';
+        }
+        
+        // Initialize the visualizer
+        const visualizer = new AudioVisualizer();
+    </script>
+</body>
+</html>
