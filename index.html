@@ -120,12 +120,23 @@
             <div class="control-group">
                 <label style="color: white;">Visualization:</label>
                 <select id="visualMode">
-                    <option value="bars">Frequency Bars</option>
+                    <option value="bars">Classic Bars</option>
+                    <option value="bars_mirror">Mirror Bars</option>
+                    <option value="bars_center">Center Bars</option>
+                    <option value="bars_radial">Radial Bars</option>
+                    <option value="bars_wave">Wave Bars</option>
+                    <option value="bars_stacked">Stacked Bars</option>
                     <option value="circle">Circular</option>
                     <option value="waveform">Waveform</option>
                     <option value="particles">Particles</option>
                     <option value="spiral">Spiral</option>
                 </select>
+            </div>
+            
+            <div class="control-group">
+                <label style="color: white;">Background:</label>
+                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
+                <button id="clearBg">Clear BG</button>
             </div>
         </div>
 
@@ -150,6 +161,7 @@
                 this.source = null;
                 this.animationId = null;
                 this.currentFileName = '';
+                this.backgroundImage = null;
                 
                 this.particles = [];
                 this.visualMode = 'bars';
@@ -192,7 +204,27 @@
                 });
             }
             
-            setupParticles() {
+            loadBackground(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const img = new Image();
+                img.onload = () => {
+                    this.backgroundImage = img;
+                    console.log('Background image loaded');
+                };
+                img.onerror = () => {
+                    console.error('Failed to load background image');
+                    alert('Failed to load background image. Please try a different file.');
+                };
+                img.src = URL.createObjectURL(file);
+            }
+            
+            clearBackground() {
+                this.backgroundImage = null;
+                document.getElementById('backgroundImage').value = '';
+                console.log('Background cleared');
+            }
                 this.particles = [];
                 for (let i = 0; i < 100; i++) {
                     this.particles.push({
@@ -419,19 +451,35 @@
             }
             
             draw() {
-                // Clear canvas with slight trail effect
-                this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                // Draw background
+                if (this.backgroundImage) {
+                    // Draw background image with slight transparency for overlay effect
+                    this.ctx.globalAlpha = 0.7;
+                    this.ctx.drawImage(this.backgroundImage, 0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.globalAlpha = 1.0;
+                    
+                    // Add subtle dark overlay for better contrast
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                } else {
+                    // Default gradient background
+                    this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                }
                 
                 // Check if we have valid data
                 if (!this.dataArray || this.dataArray.every(val => val === 0)) {
-                    // Show a default animation if no audio data
                     this.drawDefaultAnimation();
                     return;
                 }
                 
                 switch (this.visualMode) {
                     case 'bars': this.drawBars(); break;
+                    case 'bars_mirror': this.drawBarsMirror(); break;
+                    case 'bars_center': this.drawBarsCenter(); break;
+                    case 'bars_radial': this.drawBarsRadial(); break;
+                    case 'bars_wave': this.drawBarsWave(); break;
+                    case 'bars_stacked': this.drawBarsStacked(); break;
                     case 'circle': this.drawCircle(); break;
                     case 'waveform': this.drawWaveform(); break;
                     case 'particles': this.drawParticles(); break;
@@ -439,7 +487,130 @@
                 }
             }
             
-            drawDefaultAnimation() {
+            drawBarsMirror() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.4;
+                    const centerY = this.canvas.height / 2;
+                    
+                    const hue = (i / this.dataArray.length) * 360;
+                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
+                    const lightness = 50 + (this.dataArray[i] / 255) * 30;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    
+                    // Top bar
+                    this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
+                    // Bottom bar (mirrored)
+                    this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
+                    
+                    x += barWidth;
+                }
+            }
+            
+            drawBarsCenter() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                const centerX = this.canvas.width / 2;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
+                    
+                    const hue = (i / this.dataArray.length) * 360;
+                    const saturation = 80;
+                    const lightness = 60;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    
+                    // Left side
+                    const leftX = centerX - (i + 1) * barWidth;
+                    if (leftX >= 0) {
+                        this.ctx.fillRect(leftX, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                    }
+                    
+                    // Right side
+                    const rightX = centerX + i * barWidth;
+                    if (rightX < this.canvas.width) {
+                        this.ctx.fillRect(rightX, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                    }
+                }
+            }
+            
+            drawBarsRadial() {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const baseRadius = 80;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const angle = (i / this.dataArray.length) * Math.PI * 2;
+                    const barLength = (this.dataArray[i] / 255) * 200;
+                    
+                    const x1 = centerX + Math.cos(angle) * baseRadius;
+                    const y1 = centerY + Math.sin(angle) * baseRadius;
+                    const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
+                    const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
+                    
+                    const hue = (i / this.dataArray.length) * 360;
+                    const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
+                    gradient.addColorStop(0, `hsl(${hue}, 80%, 40%)`);
+                    gradient.addColorStop(1, `hsl(${hue}, 80%, 80%)`);
+                    
+                    this.ctx.strokeStyle = gradient;
+                    this.ctx.lineWidth = 4;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x1, y1);
+                    this.ctx.lineTo(x2, y2);
+                    this.ctx.stroke();
+                }
+            }
+            
+            drawBarsWave() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                const time = Date.now() * 0.002;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const baseHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.6;
+                    const wave = Math.sin(time + i * 0.1) * 20;
+                    const barHeight = baseHeight + wave;
+                    
+                    const hue = (time * 50 + i * 2) % 360;
+                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
+                    const lightness = 50 + wave;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    this.ctx.fillRect(x, this.canvas.height - Math.abs(barHeight), barWidth - 2, Math.abs(barHeight));
+                    
+                    x += barWidth;
+                }
+            }
+            
+            drawBarsStacked() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const totalHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
+                    const segments = 5;
+                    const segmentHeight = totalHeight / segments;
+                    
+                    for (let j = 0; j < segments; j++) {
+                        const hue = (i / this.dataArray.length) * 360 + j * 30;
+                        const alpha = 1 - (j * 0.15);
+                        
+                        this.ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
+                        this.ctx.fillRect(
+                            x, 
+                            this.canvas.height - (j + 1) * segmentHeight, 
+                            barWidth - 2, 
+                            segmentHeight - 1
+                        );
+                    }
+                    
+                    x += barWidth;
+                }
+            }
                 // Simple pulsing circle when no audio is detected
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
