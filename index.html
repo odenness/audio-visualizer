@@ -244,6 +244,44 @@
                     <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1">
                     <span id="sensitivityValue">1.0x</span>
                 </div>
+                
+                <div class="slider-group">
+                    <label>Bar Thickness:</label>
+                    <input type="range" id="barThickness" min="0.2" max="3" step="0.1" value="1">
+                    <span id="thicknessValue">1.0x</span>
+                </div>
+                
+                <div class="slider-group">
+                    <label>Bar Count:</label>
+                    <input type="range" id="barCount" min="32" max="512" step="16" value="256">
+                    <span id="barCountValue">256</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <h4>📺 Aspect Ratio</h4>
+                <select id="aspectRatio">
+                    <option value="fullscreen">Fullscreen</option>
+                    <option value="16:9">16:9 (1920x1080)</option>
+                    <option value="21:9">21:9 (Ultrawide)</option>
+                    <option value="4:3">4:3 (Classic)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                    <option value="9:16">9:16 (Vertical/Mobile)</option>
+                    <option value="custom">Custom</option>
+                </select>
+                
+                <div id="customAspect" style="display: none; margin-top: 10px;">
+                    <div class="slider-group">
+                        <label>Width:</label>
+                        <input type="number" id="customWidth" value="1920" min="320" max="3840" style="width: 80px; padding: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px;">
+                        <label style="margin-left: 10px;">Height:</label>
+                        <input type="number" id="customHeight" value="1080" min="240" max="2160" style="width: 80px; padding: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px;">
+                    </div>
+                </div>
+                
+                <div style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
+                    Current: <span id="currentResolution">Fullscreen</span>
+                </div>
             </div>
             
             <div class="control-group">
@@ -296,6 +334,11 @@
                 this.sensitivity = 1;
                 this.bgOpacity = 0.7;
                 this.bgScale = 1;
+                this.barThickness = 1;
+                this.barCount = 256;
+                this.aspectRatio = 'fullscreen';
+                this.canvasWidth = window.innerWidth;
+                this.canvasHeight = window.innerHeight;
                 
                 this.setupCanvas();
                 this.setupEventListeners();
@@ -303,13 +346,67 @@
             }
             
             setupCanvas() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
+                this.updateCanvasSize();
                 
                 window.addEventListener('resize', () => {
-                    this.canvas.width = window.innerWidth;
-                    this.canvas.height = window.innerHeight;
+                    if (this.aspectRatio === 'fullscreen') {
+                        this.updateCanvasSize();
+                    }
                 });
+            }
+            
+            updateCanvasSize() {
+                switch (this.aspectRatio) {
+                    case 'fullscreen':
+                        this.canvasWidth = window.innerWidth;
+                        this.canvasHeight = window.innerHeight;
+                        break;
+                    case '16:9':
+                        const width16_9 = Math.min(window.innerWidth, window.innerHeight * (16/9));
+                        this.canvasWidth = width16_9;
+                        this.canvasHeight = width16_9 * (9/16);
+                        break;
+                    case '21:9':
+                        const width21_9 = Math.min(window.innerWidth, window.innerHeight * (21/9));
+                        this.canvasWidth = width21_9;
+                        this.canvasHeight = width21_9 * (9/21);
+                        break;
+                    case '4:3':
+                        const width4_3 = Math.min(window.innerWidth, window.innerHeight * (4/3));
+                        this.canvasWidth = width4_3;
+                        this.canvasHeight = width4_3 * (3/4);
+                        break;
+                    case '1:1':
+                        const size1_1 = Math.min(window.innerWidth, window.innerHeight);
+                        this.canvasWidth = size1_1;
+                        this.canvasHeight = size1_1;
+                        break;
+                    case '9:16':
+                        const height9_16 = Math.min(window.innerHeight, window.innerWidth * (16/9));
+                        this.canvasHeight = height9_16;
+                        this.canvasWidth = height9_16 * (9/16);
+                        break;
+                    case 'custom':
+                        this.canvasWidth = parseInt(document.getElementById('customWidth').value) || 1920;
+                        this.canvasHeight = parseInt(document.getElementById('customHeight').value) || 1080;
+                        const scale = Math.min(window.innerWidth / this.canvasWidth, window.innerHeight / this.canvasHeight);
+                        if (scale < 1) {
+                            this.canvasWidth *= scale;
+                            this.canvasHeight *= scale;
+                        }
+                        break;
+                }
+                
+                this.canvas.width = this.canvasWidth;
+                this.canvas.height = this.canvasHeight;
+                
+                this.canvas.style.position = 'absolute';
+                this.canvas.style.left = '50%';
+                this.canvas.style.top = '50%';
+                this.canvas.style.transform = 'translate(-50%, -50%)';
+                this.canvas.style.border = this.aspectRatio !== 'fullscreen' ? '2px solid rgba(255,255,255,0.3)' : 'none';
+                
+                document.getElementById('currentResolution').textContent = `${Math.round(this.canvasWidth)} × ${Math.round(this.canvasHeight)}`;
             }
             
             setupEventListeners() {
@@ -321,7 +418,6 @@
                 const backgroundInput = document.getElementById('backgroundImage');
                 const clearBgBtn = document.getElementById('clearBg');
                 
-                // Audio controls
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
@@ -333,7 +429,6 @@
                 playBtn.addEventListener('click', () => this.play());
                 pauseBtn.addEventListener('click', () => this.pause());
                 
-                // Visual controls
                 visualMode.addEventListener('change', (e) => {
                     this.visualMode = e.target.value;
                     if (this.visualMode === 'particles') {
@@ -347,7 +442,6 @@
                     customDiv.style.display = e.target.value === 'custom' || e.target.value === 'gradient' ? 'block' : 'none';
                 });
                 
-                // Color inputs
                 document.getElementById('color1').addEventListener('change', (e) => {
                     this.customColors[0] = e.target.value;
                 });
@@ -358,7 +452,6 @@
                     this.customColors[2] = e.target.value;
                 });
                 
-                // Scale controls
                 document.getElementById('visualizerScale').addEventListener('input', (e) => {
                     this.visualizerScale = parseFloat(e.target.value);
                     document.getElementById('scaleValue').textContent = this.visualizerScale.toFixed(1) + 'x';
@@ -369,7 +462,35 @@
                     document.getElementById('sensitivityValue').textContent = this.sensitivity.toFixed(1) + 'x';
                 });
                 
-                // Background controls
+                document.getElementById('barThickness').addEventListener('input', (e) => {
+                    this.barThickness = parseFloat(e.target.value);
+                    document.getElementById('thicknessValue').textContent = this.barThickness.toFixed(1) + 'x';
+                });
+                
+                document.getElementById('barCount').addEventListener('input', (e) => {
+                    this.barCount = parseInt(e.target.value);
+                    document.getElementById('barCountValue').textContent = this.barCount;
+                });
+                
+                document.getElementById('aspectRatio').addEventListener('change', (e) => {
+                    this.aspectRatio = e.target.value;
+                    const customDiv = document.getElementById('customAspect');
+                    customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
+                    this.updateCanvasSize();
+                });
+                
+                document.getElementById('customWidth').addEventListener('input', () => {
+                    if (this.aspectRatio === 'custom') {
+                        this.updateCanvasSize();
+                    }
+                });
+                
+                document.getElementById('customHeight').addEventListener('input', () => {
+                    if (this.aspectRatio === 'custom') {
+                        this.updateCanvasSize();
+                    }
+                });
+                
                 backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
                 clearBgBtn.addEventListener('click', () => this.clearBackground());
                 
@@ -389,8 +510,8 @@
                 const particleCount = Math.floor(100 * this.visualizerScale);
                 for (let i = 0; i < particleCount; i++) {
                     this.particles.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
+                        x: Math.random() * this.canvasWidth,
+                        y: Math.random() * this.canvasHeight,
                         vx: (Math.random() - 0.5) * 2,
                         vy: (Math.random() - 0.5) * 2,
                         size: Math.random() * 3 + 1,
@@ -553,26 +674,24 @@
             }
             
             draw() {
-                // Clear canvas
                 if (this.backgroundImage) {
                     this.ctx.globalAlpha = this.bgOpacity;
-                    const scaledWidth = this.canvas.width * this.bgScale;
-                    const scaledHeight = this.canvas.height * this.bgScale;
-                    const offsetX = (this.canvas.width - scaledWidth) / 2;
-                    const offsetY = (this.canvas.height - scaledHeight) / 2;
+                    const scaledWidth = this.canvasWidth * this.bgScale;
+                    const scaledHeight = this.canvasHeight * this.bgScale;
+                    const offsetX = (this.canvasWidth - scaledWidth) / 2;
+                    const offsetY = (this.canvasHeight - scaledHeight) / 2;
                     this.ctx.drawImage(this.backgroundImage, offsetX, offsetY, scaledWidth, scaledHeight);
                     this.ctx.globalAlpha = 1.0;
                     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
                 } else {
                     this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
-                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
                 }
                 
-                // Apply scaling transform
                 this.ctx.save();
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
                 this.ctx.translate(centerX, centerY);
                 this.ctx.scale(this.visualizerScale, this.visualizerScale);
                 this.ctx.translate(-centerX, -centerY);
@@ -600,8 +719,8 @@
             }
             
             drawDefaultAnimation() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
                 const time = Date.now() * 0.005;
                 const radius = 50 + Math.sin(time) * 20;
                 
@@ -617,97 +736,127 @@
                 this.ctx.fillText('Loading audio data...', centerX, centerY + 100);
             }
             
-            drawBars() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
+            getSampledData() {
+                if (!this.dataArray) return [];
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
-                    const intensity = this.dataArray[i] / 255;
+                if (this.barCount >= this.dataArray.length) {
+                    return Array.from(this.dataArray);
+                }
+                
+                const sampledData = [];
+                const sampleSize = this.dataArray.length / this.barCount;
+                
+                for (let i = 0; i < this.barCount; i++) {
+                    const start = Math.floor(i * sampleSize);
+                    const end = Math.floor((i + 1) * sampleSize);
+                    let sum = 0;
+                    let count = 0;
                     
-                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity);
-                    this.ctx.fillRect(x, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                    for (let j = start; j < end && j < this.dataArray.length; j++) {
+                        sum += this.dataArray[j];
+                        count++;
+                    }
                     
-                    // Top reflection
-                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity * 0.3);
-                    this.ctx.fillRect(x, 0, barWidth - 2, barHeight * 0.5);
+                    sampledData.push(count > 0 ? sum / count : 0);
+                }
+                
+                return sampledData;
+            }
+            
+            drawBars() {
+                const sampledData = this.getSampledData();
+                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+                const barSpacing = this.canvasWidth / sampledData.length;
+                let x = (barSpacing - barWidth) / 2;
+                
+                for (let i = 0; i < sampledData.length; i++) {
+                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
+                    const intensity = sampledData[i] / 255;
                     
-                    x += barWidth;
+                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
+                    this.ctx.fillRect(x, this.canvasHeight - barHeight, barWidth, barHeight);
+                    
+                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity * 0.3);
+                    this.ctx.fillRect(x, 0, barWidth, barHeight * 0.5);
+                    
+                    x += barSpacing;
                 }
             }
             
             drawBarsMirror() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
+                const sampledData = this.getSampledData();
+                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+                const barSpacing = this.canvasWidth / sampledData.length;
+                let x = (barSpacing - barWidth) / 2;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.4 * this.sensitivity;
-                    const centerY = this.canvas.height / 2;
-                    const intensity = this.dataArray[i] / 255;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.4 * this.sensitivity;
+                    const centerY = this.canvasHeight / 2;
+                    const intensity = sampledData[i] / 255;
                     
-                    const color = this.getColor(i, this.dataArray.length, intensity);
+                    const color = this.getColor(i, sampledData.length, intensity);
                     this.ctx.fillStyle = color;
                     
-                    // Bottom bars
-                    this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
-                    // Top bars (mirrored)
-                    this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
+                    this.ctx.fillRect(x, centerY, barWidth, barHeight);
+                    this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
                     
-                    // Add glow effect for mirror bars
                     this.ctx.shadowBlur = 10;
                     this.ctx.shadowColor = color;
-                    this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
-                    this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
+                    this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
+                    this.ctx.fillRect(x, centerY, barWidth, barHeight);
                     this.ctx.shadowBlur = 0;
                     
-                    x += barWidth;
+                    x += barSpacing;
                 }
             }
             
             drawBarsCenter() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                const centerX = this.canvas.width / 2;
+                const sampledData = this.getSampledData();
+                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+                const barSpacing = this.canvasWidth / sampledData.length;
+                const centerX = this.canvasWidth / 2;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
-                    const intensity = this.dataArray[i] / 255;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
+                    const intensity = sampledData[i] / 255;
                     
-                    this.ctx.fillStyle = this.getColor(i, this.dataArray.length, intensity);
+                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
                     
-                    const leftX = centerX - (i + 1) * barWidth;
+                    const leftX = centerX - (i + 1) * barSpacing + (barSpacing - barWidth) / 2;
                     if (leftX >= 0) {
-                        this.ctx.fillRect(leftX, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                        this.ctx.fillRect(leftX, this.canvasHeight - barHeight, barWidth, barHeight);
                     }
                     
-                    const rightX = centerX + i * barWidth;
-                    if (rightX < this.canvas.width) {
-                        this.ctx.fillRect(rightX, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                    const rightX = centerX + i * barSpacing + (barSpacing - barWidth) / 2;
+                    if (rightX < this.canvasWidth) {
+                        this.ctx.fillRect(rightX, this.canvasHeight - barHeight, barWidth, barHeight);
                     }
                 }
             }
             
             drawBarsRadial() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
+                const sampledData = this.getSampledData();
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
                 const baseRadius = 80;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const angle = (i / this.dataArray.length) * Math.PI * 2;
-                    const barLength = (this.dataArray[i] / 255) * 200 * this.sensitivity;
-                    const intensity = this.dataArray[i] / 255;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const angle = (i / sampledData.length) * Math.PI * 2;
+                    const barLength = (sampledData[i] / 255) * 200 * this.sensitivity;
+                    const intensity = sampledData[i] / 255;
                     
                     const x1 = centerX + Math.cos(angle) * baseRadius;
                     const y1 = centerY + Math.sin(angle) * baseRadius;
                     const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
                     const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
                     
-                    const color = this.getColor(i, this.dataArray.length, intensity);
+                    const color = this.getColor(i, sampledData.length, intensity);
                     const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
                     gradient.addColorStop(0, color);
                     gradient.addColorStop(1, color.replace(')', ', 0.1)').replace('rgb', 'rgba'));
                     
                     this.ctx.strokeStyle = gradient;
-                    this.ctx.lineWidth = 4;
+                    this.ctx.lineWidth = 4 * this.barThickness;
                     this.ctx.beginPath();
                     this.ctx.moveTo(x1, y1);
                     this.ctx.lineTo(x2, y2);
@@ -716,62 +865,67 @@
             }
             
             drawBarsWave() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
+                const sampledData = this.getSampledData();
+                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+                const barSpacing = this.canvasWidth / sampledData.length;
+                let x = (barSpacing - barWidth) / 2;
                 const time = Date.now() * 0.002;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const baseHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.6 * this.sensitivity;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const baseHeight = (sampledData[i] / 255) * this.canvasHeight * 0.6 * this.sensitivity;
                     const wave = Math.sin(time + i * 0.1) * 20;
                     const barHeight = baseHeight + wave;
-                    const intensity = this.dataArray[i] / 255;
+                    const intensity = sampledData[i] / 255;
                     
-                    this.ctx.fillStyle = this.getColor(i + time * 50, this.dataArray.length, intensity);
-                    this.ctx.fillRect(x, this.canvas.height - Math.abs(barHeight), barWidth - 2, Math.abs(barHeight));
+                    this.ctx.fillStyle = this.getColor(i + time * 50, sampledData.length, intensity);
+                    this.ctx.fillRect(x, this.canvasHeight - Math.abs(barHeight), barWidth, Math.abs(barHeight));
                     
-                    x += barWidth;
+                    x += barSpacing;
                 }
             }
             
             drawBarsStacked() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
+                const sampledData = this.getSampledData();
+                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+                const barSpacing = this.canvasWidth / sampledData.length;
+                let x = (barSpacing - barWidth) / 2;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const totalHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8 * this.sensitivity;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const totalHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
                     const segments = 5;
                     const segmentHeight = totalHeight / segments;
-                    const intensity = this.dataArray[i] / 255;
+                    const intensity = sampledData[i] / 255;
                     
                     for (let j = 0; j < segments; j++) {
                         const alpha = 1 - (j * 0.15);
-                        const color = this.getColor(i + j * 10, this.dataArray.length, intensity * alpha);
+                        const color = this.getColor(i + j * 10, sampledData.length, intensity * alpha);
                         
                         this.ctx.fillStyle = color;
-                        this.ctx.fillRect(x, this.canvas.height - (j + 1) * segmentHeight, barWidth - 2, segmentHeight - 1);
+                        this.ctx.fillRect(x, this.canvasHeight - (j + 1) * segmentHeight, barWidth, segmentHeight - 1);
                     }
                     
-                    x += barWidth;
+                    x += barSpacing;
                 }
             }
             
             drawCircle() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
+                const sampledData = this.getSampledData();
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
                 const radius = 100;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const angle = (i / this.dataArray.length) * Math.PI * 2;
-                    const amplitude = (this.dataArray[i] / 255) * 200 * this.sensitivity;
-                    const intensity = this.dataArray[i] / 255;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const angle = (i / sampledData.length) * Math.PI * 2;
+                    const amplitude = (sampledData[i] / 255) * 200 * this.sensitivity;
+                    const intensity = sampledData[i] / 255;
                     
                     const x1 = centerX + Math.cos(angle) * radius;
                     const y1 = centerY + Math.sin(angle) * radius;
                     const x2 = centerX + Math.cos(angle) * (radius + amplitude);
                     const y2 = centerY + Math.sin(angle) * (radius + amplitude);
                     
-                    this.ctx.strokeStyle = this.getColor(i, this.dataArray.length, intensity);
-                    this.ctx.lineWidth = 3;
+                    this.ctx.strokeStyle = this.getColor(i, sampledData.length, intensity);
+                    this.ctx.lineWidth = 3 * this.barThickness;
                     this.ctx.beginPath();
                     this.ctx.moveTo(x1, y1);
                     this.ctx.lineTo(x2, y2);
@@ -780,16 +934,17 @@
             }
             
             drawWaveform() {
+                const sampledData = this.getSampledData();
                 this.ctx.strokeStyle = this.getColor(0, 1, 1);
-                this.ctx.lineWidth = 2;
+                this.ctx.lineWidth = 2 * this.barThickness;
                 this.ctx.beginPath();
                 
-                const sliceWidth = this.canvas.width / this.dataArray.length;
+                const sliceWidth = this.canvasWidth / sampledData.length;
                 let x = 0;
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const v = (this.dataArray[i] / 128) * this.sensitivity;
-                    const y = v * this.canvas.height / 2;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const v = (sampledData[i] / 128) * this.sensitivity;
+                    const y = v * this.canvasHeight / 2;
                     
                     if (i === 0) {
                         this.ctx.moveTo(x, y);
@@ -804,18 +959,19 @@
             }
             
             drawParticles() {
-                const avgFreq = this.dataArray.reduce((a, b) => a + b) / this.dataArray.length;
+                const sampledData = this.getSampledData();
+                const avgFreq = sampledData.reduce((a, b) => a + b) / sampledData.length;
                 
                 this.particles.forEach((particle, index) => {
-                    const freqData = this.dataArray[index % this.dataArray.length];
+                    const freqData = sampledData[index % sampledData.length];
                     const intensity = (freqData / 255) * this.sensitivity;
                     
                     particle.x += particle.vx * (1 + intensity);
                     particle.y += particle.vy * (1 + intensity);
-                    particle.size = 1 + intensity * 5;
+                    particle.size = (1 + intensity * 5) * this.barThickness;
                     
-                    if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
-                    if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+                    if (particle.x < 0 || particle.x > this.canvasWidth) particle.vx *= -1;
+                    if (particle.y < 0 || particle.y > this.canvasHeight) particle.vy *= -1;
                     
                     this.ctx.fillStyle = this.getColor(particle.hue + avgFreq, 360, intensity);
                     this.ctx.beginPath();
@@ -825,16 +981,17 @@
             }
             
             drawSpiral() {
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
+                const sampledData = this.getSampledData();
+                const centerX = this.canvasWidth / 2;
+                const centerY = this.canvasHeight / 2;
                 
                 this.ctx.strokeStyle = this.getColor(0, 1, 1);
-                this.ctx.lineWidth = 2;
+                this.ctx.lineWidth = 2 * this.barThickness;
                 this.ctx.beginPath();
                 
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const angle = (i / this.dataArray.length) * Math.PI * 8;
-                    const amplitude = (this.dataArray[i] / 255) * 3 * this.sensitivity;
+                for (let i = 0; i < sampledData.length; i++) {
+                    const angle = (i / sampledData.length) * Math.PI * 8;
+                    const amplitude = (sampledData[i] / 255) * 3 * this.sensitivity;
                     const radius = i * 2 + amplitude * 50;
                     
                     const x = centerX + Math.cos(angle) * radius;
@@ -851,7 +1008,6 @@
             }
         }
         
-        // Color preset functions
         function setColorPreset(preset) {
             const color1 = document.getElementById('color1');
             const color2 = document.getElementById('color2');
@@ -885,14 +1041,12 @@
                     break;
             }
             
-            // Trigger change events
             visualizer.customColors = [color1.value, color2.value, color3.value];
             visualizer.colorMode = colorMode.value;
             document.getElementById('customColors').style.display = 
                 colorMode.value === 'custom' || colorMode.value === 'gradient' ? 'block' : 'none';
         }
         
-        // Initialize the visualizer
         const visualizer = new AudioVisualizer();
     </script>
 </body>
