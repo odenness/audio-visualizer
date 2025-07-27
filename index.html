@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Visualizer</title>
+    <title>Audio Visualizer for YouTube</title>
     <style>
         body {
             margin: 0;
@@ -186,22 +186,43 @@
                 const playBtn = document.getElementById('playBtn');
                 const pauseBtn = document.getElementById('pauseBtn');
                 const visualMode = document.getElementById('visualMode');
+                const backgroundInput = document.getElementById('backgroundImage');
+                const clearBgBtn = document.getElementById('clearBg');
                 
                 fileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
                         this.currentFileName = file.name;
-                        this.loadAudio(e);
+                        this.loadAudio(file);
                     }
                 });
+                
                 playBtn.addEventListener('click', () => this.play());
                 pauseBtn.addEventListener('click', () => this.pause());
+                
                 visualMode.addEventListener('change', (e) => {
                     this.visualMode = e.target.value;
                     if (this.visualMode === 'particles') {
                         this.setupParticles();
                     }
                 });
+                
+                backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
+                clearBgBtn.addEventListener('click', () => this.clearBackground());
+            }
+            
+            setupParticles() {
+                this.particles = [];
+                for (let i = 0; i < 100; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        size: Math.random() * 3 + 1,
+                        hue: Math.random() * 360
+                    });
+                }
             }
             
             loadBackground(event) {
@@ -225,180 +246,38 @@
                 document.getElementById('backgroundImage').value = '';
                 console.log('Background cleared');
             }
-                this.particles = [];
-                for (let i = 0; i < 100; i++) {
-                    this.particles.push({
-                        x: Math.random() * this.canvas.width,
-                        y: Math.random() * this.canvas.height,
-                        vx: (Math.random() - 0.5) * 2,
-                        vy: (Math.random() - 0.5) * 2,
-                        size: Math.random() * 3 + 1,
-                        hue: Math.random() * 360
-                    });
-                }
-            }
             
-            loadAudio(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
+            loadAudio(file) {
                 console.log('Loading file:', file.name, 'Type:', file.type, 'Size:', file.size);
                 
-                // Clean up previous URL if exists
-                if (this.audio.src) {
-                    URL.revokeObjectURL(this.audio.src);
-                }
-                
-                // Try multiple approaches for better compatibility
-                this.tryLoadAudio(file, 0);
-            }
-            
-            tryLoadAudio(file, attemptNumber) {
-                const methods = [
-                    () => this.loadWithObjectURL(file),
-                    () => this.loadWithDataURL(file),
-                    () => this.loadWithArrayBuffer(file)
-                ];
-                
-                if (attemptNumber >= methods.length) {
-                    this.showFallbackMessage(file);
-                    return;
-                }
-                
-                console.log(`Attempt ${attemptNumber + 1}: Trying loading method ${attemptNumber + 1}`);
-                methods[attemptNumber]();
-                
-                // Set timeout to try next method if this one fails
-                setTimeout(() => {
-                    if (this.audio.readyState < 2) { // If still not loaded enough
-                        console.log(`Method ${attemptNumber + 1} failed, trying next...`);
-                        this.tryLoadAudio(file, attemptNumber + 1);
-                    }
-                }, 3000);
-            }
-            
-            loadWithObjectURL(file) {
                 const url = URL.createObjectURL(file);
                 this.audio.src = url;
-                this.setupAudioEvents();
-                this.audio.load();
-            }
-            
-            loadWithDataURL(file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.audio.src = e.target.result;
-                    this.setupAudioEvents();
-                    this.audio.load();
-                };
-                reader.readAsDataURL(file);
-            }
-            
-            loadWithArrayBuffer(file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const arrayBuffer = e.target.result;
-                    const blob = new Blob([arrayBuffer], { type: file.type });
-                    const url = URL.createObjectURL(blob);
-                    this.audio.src = url;
-                    this.setupAudioEvents();
-                    this.audio.load();
-                };
-                reader.readAsArrayBuffer(file);
-            }
-            
-            setupAudioEvents() {
-                // Remove old event listeners
-                this.audio.onloadstart = null;
-                this.audio.onloadeddata = null;
-                this.audio.oncanplay = null;
-                this.audio.onloadedmetadata = null;
-                this.audio.onerror = null;
-                this.audio.oncanplaythrough = null;
                 
-                this.audio.onloadstart = () => console.log('Load started');
-                this.audio.onloadeddata = () => console.log('Data loaded');
-                this.audio.oncanplay = () => console.log('Can start playing');
-                
-                this.audio.onloadedmetadata = () => {
+                this.audio.addEventListener('loadedmetadata', () => {
                     console.log('Audio metadata loaded successfully');
-                    console.log('Duration:', this.audio.duration);
-                    console.log('Ready state:', this.audio.readyState);
-                    
                     document.getElementById('playBtn').disabled = false;
                     document.getElementById('pauseBtn').disabled = false;
                     
-                    // Update info display
                     document.querySelector('.info').innerHTML = `
                         <div style="color: #00ff88;">✓ Audio loaded: ${this.currentFileName}</div>
                         <div>Duration: ${Math.floor(this.audio.duration / 60)}:${Math.floor(this.audio.duration % 60).toString().padStart(2, '0')}</div>
                         <div>Click Play to start visualization</div>
                     `;
-                };
+                });
                 
-                this.audio.onerror = (e) => {
-                    console.error('Audio loading error details:', {
-                        error: e,
-                        audioError: this.audio.error,
-                        networkState: this.audio.networkState,
-                        readyState: this.audio.readyState
-                    });
-                    
-                    let errorMsg = 'Unknown error';
-                    if (this.audio.error) {
-                        switch(this.audio.error.code) {
-                            case 1: errorMsg = 'MEDIA_ERR_ABORTED - Loading was aborted'; break;
-                            case 2: errorMsg = 'MEDIA_ERR_NETWORK - Network error'; break; 
-                            case 3: errorMsg = 'MEDIA_ERR_DECODE - Decoding error'; break;
-                            case 4: errorMsg = 'MEDIA_ERR_SRC_NOT_SUPPORTED - Format not supported'; break;
-                        }
-                    }
-                    
-                    console.error('Specific error:', errorMsg);
-                };
-                
-                this.audio.oncanplaythrough = () => {
-                    console.log('Audio can play through - ready for visualization');
-                };
-            }
-            
-            showFallbackMessage(file) {
-                console.log('All loading methods failed, showing fallback options');
-                document.querySelector('.info').innerHTML = `
-                    <div style="color: #ff6b6b;">⚠ Audio format not supported</div>
-                    <div>File: ${file.name}</div>
-                    <div style="margin-top: 10px;">Solutions:</div>
-                    <div>1. Convert to standard MP3 (44.1kHz, 128-320kbps)</div>
-                    <div>2. Try WAV format instead</div>
-                    <div>3. Use online converter like CloudConvert</div>
-                `;
-                
-                // Show a demo visualization anyway
-                this.startDemoVisualization();
-            }
-            
-            startDemoVisualization() {
-                console.log('Starting demo visualization');
-                // Create fake audio data for demo
-                this.dataArray = new Uint8Array(256);
-                
-                const animate = () => {
-                    this.animationId = requestAnimationFrame(animate);
-                    
-                    // Generate fake frequency data
-                    const time = Date.now() * 0.001;
-                    for (let i = 0; i < this.dataArray.length; i++) {
-                        this.dataArray[i] = Math.abs(Math.sin(time + i * 0.1) * 128 + Math.sin(time * 2 + i * 0.05) * 64);
-                    }
-                    
-                    this.draw();
-                };
-                animate();
+                this.audio.addEventListener('error', (e) => {
+                    console.error('Audio loading error:', e);
+                    this.startDemoVisualization();
+                    document.querySelector('.info').innerHTML = `
+                        <div style="color: #ff6b6b;">⚠ Audio format issue - showing demo</div>
+                        <div>Try converting to standard MP3 format</div>
+                        <div>Demo visualization running</div>
+                    `;
+                });
             }
             
             async play() {
                 try {
-                    // Initialize audio context on first play (required by browsers)
                     if (!this.audioContext) {
                         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
                         this.analyser = this.audioContext.createAnalyser();
@@ -409,22 +288,18 @@
                         this.source = this.audioContext.createMediaElementSource(this.audio);
                         this.source.connect(this.analyser);
                         this.analyser.connect(this.audioContext.destination);
-                        
-                        console.log('Audio context initialized');
                     }
                     
                     if (this.audioContext.state === 'suspended') {
                         await this.audioContext.resume();
-                        console.log('Audio context resumed');
                     }
                     
                     await this.audio.play();
-                    console.log('Audio playing');
                     this.startVisualization();
                     
                 } catch (error) {
                     console.error('Error playing audio:', error);
-                    alert('Error playing audio. Please try again or use a different file.');
+                    this.startDemoVisualization();
                 }
             }
             
@@ -436,10 +311,8 @@
             }
             
             startVisualization() {
-                console.log('Starting visualization');
                 const animate = () => {
-                    if (this.audio.paused) return; // Stop if audio is paused
-                    
+                    if (this.audio.paused) return;
                     this.animationId = requestAnimationFrame(animate);
                     
                     if (this.analyser && this.dataArray) {
@@ -450,24 +323,34 @@
                 animate();
             }
             
+            startDemoVisualization() {
+                this.dataArray = new Uint8Array(256);
+                
+                const animate = () => {
+                    this.animationId = requestAnimationFrame(animate);
+                    
+                    const time = Date.now() * 0.001;
+                    for (let i = 0; i < this.dataArray.length; i++) {
+                        this.dataArray[i] = Math.abs(Math.sin(time + i * 0.1) * 128 + Math.sin(time * 2 + i * 0.05) * 64);
+                    }
+                    
+                    this.draw();
+                };
+                animate();
+            }
+            
             draw() {
-                // Draw background
                 if (this.backgroundImage) {
-                    // Draw background image with slight transparency for overlay effect
                     this.ctx.globalAlpha = 0.7;
                     this.ctx.drawImage(this.backgroundImage, 0, 0, this.canvas.width, this.canvas.height);
                     this.ctx.globalAlpha = 1.0;
-                    
-                    // Add subtle dark overlay for better contrast
                     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 } else {
-                    // Default gradient background
                     this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
                     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 }
                 
-                // Check if we have valid data
                 if (!this.dataArray || this.dataArray.every(val => val === 0)) {
                     this.drawDefaultAnimation();
                     return;
@@ -487,6 +370,44 @@
                 }
             }
             
+            drawDefaultAnimation() {
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                const time = Date.now() * 0.005;
+                const radius = 50 + Math.sin(time) * 20;
+                
+                this.ctx.strokeStyle = `hsl(${time * 50 % 360}, 70%, 60%)`;
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.font = '20px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('Loading audio data...', centerX, centerY + 100);
+            }
+            
+            drawBars() {
+                const barWidth = this.canvas.width / this.dataArray.length;
+                let x = 0;
+                
+                for (let i = 0; i < this.dataArray.length; i++) {
+                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
+                    const hue = (i / this.dataArray.length) * 360;
+                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
+                    const lightness = 50 + (this.dataArray[i] / 255) * 30;
+                    
+                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    this.ctx.fillRect(x, this.canvas.height - barHeight, barWidth - 2, barHeight);
+                    
+                    this.ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.3)`;
+                    this.ctx.fillRect(x, 0, barWidth - 2, barHeight * 0.5);
+                    
+                    x += barWidth;
+                }
+            }
+            
             drawBarsMirror() {
                 const barWidth = this.canvas.width / this.dataArray.length;
                 let x = 0;
@@ -494,16 +415,12 @@
                 for (let i = 0; i < this.dataArray.length; i++) {
                     const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.4;
                     const centerY = this.canvas.height / 2;
-                    
                     const hue = (i / this.dataArray.length) * 360;
                     const saturation = 70 + (this.dataArray[i] / 255) * 30;
                     const lightness = 50 + (this.dataArray[i] / 255) * 30;
                     
                     this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                    
-                    // Top bar
                     this.ctx.fillRect(x, centerY - barHeight, barWidth - 2, barHeight);
-                    // Bottom bar (mirrored)
                     this.ctx.fillRect(x, centerY, barWidth - 2, barHeight);
                     
                     x += barWidth;
@@ -516,20 +433,15 @@
                 
                 for (let i = 0; i < this.dataArray.length; i++) {
                     const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
-                    
                     const hue = (i / this.dataArray.length) * 360;
-                    const saturation = 80;
-                    const lightness = 60;
                     
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                    this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
                     
-                    // Left side
                     const leftX = centerX - (i + 1) * barWidth;
                     if (leftX >= 0) {
                         this.ctx.fillRect(leftX, this.canvas.height - barHeight, barWidth - 2, barHeight);
                     }
                     
-                    // Right side
                     const rightX = centerX + i * barWidth;
                     if (rightX < this.canvas.width) {
                         this.ctx.fillRect(rightX, this.canvas.height - barHeight, barWidth - 2, barHeight);
@@ -600,53 +512,8 @@
                         const alpha = 1 - (j * 0.15);
                         
                         this.ctx.fillStyle = `hsla(${hue}, 80%, 60%, ${alpha})`;
-                        this.ctx.fillRect(
-                            x, 
-                            this.canvas.height - (j + 1) * segmentHeight, 
-                            barWidth - 2, 
-                            segmentHeight - 1
-                        );
+                        this.ctx.fillRect(x, this.canvas.height - (j + 1) * segmentHeight, barWidth - 2, segmentHeight - 1);
                     }
-                    
-                    x += barWidth;
-                }
-            }
-                // Simple pulsing circle when no audio is detected
-                const centerX = this.canvas.width / 2;
-                const centerY = this.canvas.height / 2;
-                const time = Date.now() * 0.005;
-                const radius = 50 + Math.sin(time) * 20;
-                
-                this.ctx.strokeStyle = `hsl(${time * 50 % 360}, 70%, 60%)`;
-                this.ctx.lineWidth = 3;
-                this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                this.ctx.stroke();
-                
-                // Add text
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                this.ctx.font = '20px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('Loading audio data...', centerX, centerY + 100);
-            }
-            
-            drawBars() {
-                const barWidth = this.canvas.width / this.dataArray.length;
-                let x = 0;
-                
-                for (let i = 0; i < this.dataArray.length; i++) {
-                    const barHeight = (this.dataArray[i] / 255) * this.canvas.height * 0.8;
-                    
-                    const hue = (i / this.dataArray.length) * 360;
-                    const saturation = 70 + (this.dataArray[i] / 255) * 30;
-                    const lightness = 50 + (this.dataArray[i] / 255) * 30;
-                    
-                    this.ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                    this.ctx.fillRect(x, this.canvas.height - barHeight, barWidth - 2, barHeight);
-                    
-                    // Mirror effect
-                    this.ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, 0.3)`;
-                    this.ctx.fillRect(x, 0, barWidth - 2, barHeight * 0.5);
                     
                     x += barWidth;
                 }
