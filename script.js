@@ -63,6 +63,9 @@ class AudioVisualizer {
         
         // Apply styles to fix dropdowns with white text on white background
         this.applyDropdownStyles();
+        
+        // Make the control panels draggable
+        this.setupDraggableControls();
     }
     
     /**
@@ -177,6 +180,184 @@ class AudioVisualizer {
             // Draw a frame
             this.draw();
         });
+    }
+    
+    /**
+     * Makes control panels draggable with mouse and touch interactions
+     * Allows users to reposition UI elements on screen
+     */
+    setupDraggableControls() {
+        const controlsContainer = document.querySelector('.controls');
+        
+        // Add a draggable header to the controls container
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '<span>⋮⋮ Drag to move controls</span>';
+        controlsContainer.prepend(dragHandle);
+        
+        // Variables for tracking drag state
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        // Apply initial styles to make position absolute
+        controlsContainer.style.position = 'absolute';
+        controlsContainer.style.top = '20px';
+        controlsContainer.style.left = '20px';
+        controlsContainer.style.transform = 'none'; // Remove any existing transform
+        controlsContainer.style.margin = '0';
+        controlsContainer.style.cursor = 'default';
+        
+        // Add drag handle styles
+        this.addDragHandleStyles();
+        
+        // Mouse event handlers
+        dragHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            offsetX = e.clientX - controlsContainer.getBoundingClientRect().left;
+            offsetY = e.clientY - controlsContainer.getBoundingClientRect().top;
+            controlsContainer.style.cursor = 'grabbing';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            // Calculate new position based on mouse coordinates and offset
+            const left = e.clientX - offsetX;
+            const top = e.clientY - offsetY;
+            
+            // Apply boundary constraints to keep controls on screen
+            const maxLeft = window.innerWidth - controlsContainer.offsetWidth;
+            const maxTop = window.innerHeight - controlsContainer.offsetHeight;
+            
+            controlsContainer.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
+            controlsContainer.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            controlsContainer.style.cursor = 'default';
+        });
+        
+        // Touch event handlers for mobile devices
+        dragHandle.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            const touch = e.touches[0];
+            offsetX = touch.clientX - controlsContainer.getBoundingClientRect().left;
+            offsetY = touch.clientY - controlsContainer.getBoundingClientRect().top;
+            e.preventDefault(); // Prevent scrolling while dragging
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            
+            const touch = e.touches[0];
+            const left = touch.clientX - offsetX;
+            const top = touch.clientY - offsetY;
+            
+            const maxLeft = window.innerWidth - controlsContainer.offsetWidth;
+            const maxTop = window.innerHeight - controlsContainer.offsetHeight;
+            
+            controlsContainer.style.left = `${Math.max(0, Math.min(left, maxLeft))}px`;
+            controlsContainer.style.top = `${Math.max(0, Math.min(top, maxTop))}px`;
+            
+            e.preventDefault(); // Prevent scrolling while dragging
+        });
+        
+        document.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+        
+        console.log('Control panels are now draggable');
+    }
+    
+    /**
+     * Adds CSS styles for the drag handle and draggable controls
+     */
+    addDragHandleStyles() {
+        const styleEl = document.createElement('style');
+        
+        styleEl.textContent = `
+            .controls {
+                transition: background-color 0.3s ease;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+                border-radius: 8px;
+                overflow: hidden;
+                max-height: 90vh;
+                overflow-y: auto;
+                max-width: 400px;
+                z-index: 1000;
+            }
+            
+            .drag-handle {
+                background: rgba(60, 60, 80, 0.9);
+                padding: 5px 10px;
+                cursor: grab;
+                text-align: center;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                user-select: none;
+            }
+            
+            .drag-handle:active {
+                cursor: grabbing;
+            }
+            
+            .drag-handle span {
+                color: rgba(255, 255, 255, 0.8);
+                font-size: 14px;
+                display: block;
+            }
+            
+            /* Make scrollbar more visible */
+            .controls::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            .controls::-webkit-scrollbar-track {
+                background: rgba(0, 0, 0, 0.2);
+            }
+            
+            .controls::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+            }
+        `;
+        
+        document.head.appendChild(styleEl);
+    }
+    
+    /**
+     * Updates the transparency of all UI control panels
+     * @param {number} transparency - Transparency value between 0 and 0.75
+     */
+    updateUITransparency(transparency) {
+        // Create or update the CSS variables for UI transparency
+        const root = document.documentElement;
+        
+        // Calculate the background opacity (inverse of transparency)
+        const bgOpacity = 1 - transparency;
+        
+        // Update the CSS variables
+        root.style.setProperty('--control-bg-opacity', bgOpacity.toFixed(2));
+        
+        // Apply the new styles to control panels
+        const controls = document.querySelectorAll('.control-group');
+        controls.forEach(control => {
+            control.style.backgroundColor = `rgba(0, 0, 0, ${bgOpacity.toFixed(2)})`;
+        });
+        
+        // Also update the container for better visibility
+        const controlsContainer = document.querySelector('.controls');
+        if (controlsContainer) {
+            controlsContainer.style.backgroundColor = `rgba(0, 0, 0, ${Math.max(bgOpacity - 0.1, 0).toFixed(2)})`;
+            
+            // Make drag handle adjust opacity as well
+            const dragHandle = document.querySelector('.drag-handle');
+            if (dragHandle) {
+                const handleOpacity = Math.min(bgOpacity + 0.2, 0.9); // Keep handle slightly more visible
+                dragHandle.style.backgroundColor = `rgba(60, 60, 80, ${handleOpacity.toFixed(2)})`;
+            }
+        }
     }
     
     /**
@@ -315,33 +496,6 @@ class AudioVisualizer {
             this.updateUITransparency(transparency);
             document.getElementById('transparencyValue').textContent = Math.round(transparency * 100) + '%';
         });
-    }
-    
-    /**
-     * Updates the transparency of all UI control panels
-     * @param {number} transparency - Transparency value between 0 and 0.75
-     */
-    updateUITransparency(transparency) {
-        // Create or update the CSS variables for UI transparency
-        const root = document.documentElement;
-        
-        // Calculate the background opacity (inverse of transparency)
-        const bgOpacity = 1 - transparency;
-        
-        // Update the CSS variables
-        root.style.setProperty('--control-bg-opacity', bgOpacity.toFixed(2));
-        
-        // Apply the new styles to control panels
-        const controls = document.querySelectorAll('.control-group');
-        controls.forEach(control => {
-            control.style.backgroundColor = `rgba(0, 0, 0, ${bgOpacity.toFixed(2)})`;
-        });
-        
-        // Also update the container for better visibility
-        const controlsContainer = document.querySelector('.controls');
-        if (controlsContainer) {
-            controlsContainer.style.backgroundColor = `rgba(0, 0, 0, ${Math.max(bgOpacity - 0.1, 0).toFixed(2)})`;
-        }
     }
     
     /**
