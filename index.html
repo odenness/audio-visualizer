@@ -88,6 +88,49 @@ for their YouTube videos, podcasts, and social media content.
                 <button id="playBtn" disabled>Play</button>
                 <button id="pauseBtn" disabled>Pause</button>
             </div>
+
+            <!-- ===== VIDEO RECORDING CONTROLS ===== -->
+            <div class="control-group">
+                <h4>🎥 Video Recording</h4>
+                <!-- Recording quality selection -->
+                <label>Quality:</label>
+                <select id="recordingQuality">
+                    <option value="1080p">1080p (Recommended)</option>
+                    <option value="720p">720p</option>
+                    <option value="4K">4K (High Quality)</option>
+                    <option value="custom">Custom Bitrate</option>
+                </select>
+                
+                <!-- Custom bitrate input - hidden by default -->
+                <div id="customBitrate" style="display: none; margin-top: 10px;">
+                    <div class="slider-group">
+                        <label>Video Bitrate (Mbps):</label>
+                        <input type="range" id="videoBitrate" min="2" max="50" step="1" value="8">
+                        <span id="bitrateValue">8 Mbps</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Audio Bitrate (kbps):</label>
+                        <input type="range" id="audioBitrate" min="128" max="320" step="32" value="192">
+                        <span id="audioBitrateValue">192 kbps</span>
+                    </div>
+                </div>
+                
+                <!-- Recording controls -->
+                <button id="recordBtn" disabled>🔴 Start Recording</button>
+                <button id="stopRecordBtn" disabled style="display: none;">⏹️ Stop Recording</button>
+                
+                <!-- Recording status -->
+                <div id="recordingStatus" style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
+                    Ready to record
+                </div>
+                
+                <!-- Format selection -->
+                <label style="margin-top: 10px;">Output Format:</label>
+                <select id="outputFormat">
+                    <option value="webm">WebM (Recommended)</option>
+                    <option value="mp4">MP4 (if supported)</option>
+                </select>
+            </div>
             
             <!-- ===== VISUALIZATION MODE SELECTION ===== -->
             <div class="control-group">
@@ -773,17 +816,22 @@ for their YouTube videos, podcasts, and social media content.
                 // Success handler - store loaded image
                 img.onload = () => {
                     this.backgroundImage = img;
-                    console.log('Background image loaded');
+                    console.log('Background image loaded successfully:', img.width, 'x', img.height);
                 };
                 
                 // Error handler - show user feedback
-                img.onerror = () => {
-                    console.error('Failed to load background image');
+                img.onerror = (e) => {
+                    console.error('Failed to load background image:', e);
                     alert('Failed to load background image. Please try a different file.');
+                    this.backgroundImage = null;
                 };
                 
                 // Load image from file
-                img.src = URL.createObjectURL(file);
+                const url = URL.createObjectURL(file);
+                img.src = url;
+                
+                // Log the image loading attempt
+                console.log('Attempting to load background image:', file.name, 'Size:', file.size);
             }
             
             /**
@@ -1018,19 +1066,32 @@ for their YouTube videos, podcasts, and social media content.
              * Handles background rendering, scaling, and delegates to specific draw methods
              */
             draw() {
+                // Clear the canvas first to prevent artifacts
+                this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+                
                 // ===== RENDER BACKGROUND (IMAGE OR DEFAULT) =====
                 if (this.backgroundImage) {
-                    // Draw background image with opacity and scaling
-                    this.ctx.globalAlpha = this.bgOpacity;
+                    // Reset globalAlpha to ensure previous frames don't affect this one
+                    this.ctx.globalAlpha = 1.0;
+                    
+                    // Draw background image with scaling
                     const scaledWidth = this.canvasWidth * this.bgScale;
                     const scaledHeight = this.canvasHeight * this.bgScale;
                     const offsetX = (this.canvasWidth - scaledWidth) / 2;
                     const offsetY = (this.canvasHeight - scaledHeight) / 2;
-                    this.ctx.drawImage(this.backgroundImage, offsetX, offsetY, scaledWidth, scaledHeight);
-                    this.ctx.globalAlpha = 1.0;
-                    // Add dark overlay for better visualization visibility
-                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                    
+                    try {
+                        this.ctx.drawImage(this.backgroundImage, offsetX, offsetY, scaledWidth, scaledHeight);
+                        
+                        // Apply opacity overlay after drawing the image
+                        this.ctx.fillStyle = `rgba(0, 0, 0, ${1 - this.bgOpacity})`;
+                        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                    } catch (e) {
+                        console.error('Error drawing background image:', e);
+                        // Fallback to default background if image drawing fails
+                        this.ctx.fillStyle = 'rgba(10, 10, 10, 1)';
+                        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+                    }
                 } else {
                     // Default background with fade effect
                     this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';

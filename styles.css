@@ -188,3 +188,27 @@ label {
     font-size: 11px;
     min-width: 30px;
 }
+
+/* ===== RECORDING CONTROLS STYLING ===== */
+#recordBtn {
+    background: linear-gradient(45deg, #ff4444, #cc0000);
+}
+
+#recordBtn:hover {
+    box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+}
+
+#stopRecordBtn {
+    background: linear-gradient(45deg, #666666, #444444);
+}
+
+#stopRecordBtn:hover {
+    box-shadow: 0 5px 15px rgba(102, 102, 102, 0.4);
+}
+
+#recordingStatus {
+    padding: 5px;
+    border-radius: 3px;
+    background: rgba(0,0,0,0.3);
+    font-family: monospace;
+}
