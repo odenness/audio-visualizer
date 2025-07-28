@@ -238,6 +238,13 @@ for their YouTube videos, podcasts, and social media content.
                     </div>
                 </div>
                 
+                <!-- UI Transparency control -->
+                <div class="slider-group" style="margin-top: 10px;">
+                    <label>UI Transparency:</label>
+                    <input type="range" id="uiTransparency" min="0" max="0.99" step="0.05" value="0">
+                    <span id="transparencyValue">0%</span>
+                </div>
+                
                 <!-- Current resolution display -->
                 <div style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
                     Current: <span id="currentResolution">Fullscreen</span>
@@ -355,14 +362,14 @@ for their YouTube videos, podcasts, and social media content.
                 <!-- Dropdown for selecting visualization type -->
                 <select id="visualMode">
                     <option value="bars">Classic Bars</option>
-                    <option value="bars_mirror">Mirror Bars ⭐</option> <!-- Default/recommended -->
+                    <option value="bars_mirror">Mirror Bars</option> 
                     <option value="bars_center">Center Bars</option>
                     <option value="bars_radial">Radial Bars</option>
                     <option value="bars_wave">Wave Bars</option>
                     <option value="bars_stacked">Stacked Bars</option>
                     <option value="circle">Circular</option>
                     <option value="waveform">Waveform</option>
-                    <option value="particles">Particles</option>
+                    <option value="particles">Particles</option><!-- Default/recommended -->
                     <option value="spiral">Spiral</option>
                 </select>
             </div>
@@ -454,6 +461,13 @@ for their YouTube videos, podcasts, and social media content.
                     </div>
                 </div>
                 
+                <!-- UI Transparency control -->
+                <div class="slider-group" style="margin-top: 10px;">
+                    <label>UI Transparency:</label>
+                    <input type="range" id="uiTransparency" min="0" max="0.75" step="0.05" value="0">
+                    <span id="transparencyValue">0%</span>
+                </div>
+                
                 <!-- Current resolution display -->
                 <div style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
                     Current: <span id="currentResolution">Fullscreen</span>
@@ -542,7 +556,7 @@ for their YouTube videos, podcasts, and social media content.
                 this.particles = [];             // Array of particle objects
                 
                 // ===== VISUALIZATION SETTINGS WITH DEFAULT VALUES =====
-                this.visualMode = 'bars_mirror';  // Default to mirror bars (recommended)
+                this.visualMode = 'particles';  // Default to particles (recommended)
                 this.colorMode = 'rainbow';       // Default color scheme
                 this.customColors = ['#ff6b6b', '#4ecdc4', '#45b7d1']; // Custom color palette
                 this.visualizerScale = 1;         // Overall scale multiplier
@@ -551,7 +565,7 @@ for their YouTube videos, podcasts, and social media content.
                 this.bgScale = 1;                // Background image scale
                 this.barThickness = 1;           // Bar thickness multiplier
                 this.barCount = 256;             // Number of frequency bars
-                this.aspectRatio = 'fullscreen'; // Display aspect ratio
+                this.aspectRatio = '1:1'; // Display aspect ratio
                 
                 // ===== CANVAS DIMENSIONS =====
                 this.canvasWidth = window.innerWidth;
@@ -765,6 +779,15 @@ for their YouTube videos, podcasts, and social media content.
                 document.getElementById('bgScale').addEventListener('input', (e) => {
                     this.bgScale = parseFloat(e.target.value);
                     document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
+                });
+                
+                // ===== UI TRANSPARENCY CONTROL HANDLER =====
+                document.getElementById('uiTransparency').addEventListener('input', (e) => {
+                    const transparency = parseFloat(e.target.value);
+                    document.querySelectorAll('.control-group').forEach(group => {
+                        group.style.opacity = 1 - transparency;
+                    });
+                    document.getElementById('transparencyValue').textContent = `${Math.round(transparency * 100)}%`;
                 });
             }
             

@@ -38,7 +38,7 @@ class AudioVisualizer {
         this.particles = [];             // Array of particle objects
         
         // ===== VISUALIZATION SETTINGS WITH DEFAULT VALUES =====
-        this.visualMode = 'bars_mirror';  // Default to mirror bars (recommended)
+        this.visualMode = 'particles';  // Default to particles (recommended)
         this.colorMode = 'rainbow';       // Default color scheme
         this.customColors = ['#ff6b6b', '#4ecdc4', '#45b7d1']; // Custom color palette
         this.visualizerScale = 1;         // Overall scale multiplier
@@ -47,7 +47,7 @@ class AudioVisualizer {
         this.bgScale = 1;                // Background image scale
         this.barThickness = 1;           // Bar thickness multiplier
         this.barCount = 256;             // Number of frequency bars
-        this.aspectRatio = 'fullscreen'; // Display aspect ratio
+        this.aspectRatio = '1:1'; // Display aspect ratio
         
         // ===== CANVAS DIMENSIONS =====
         this.canvasWidth = window.innerWidth;
@@ -308,6 +308,40 @@ class AudioVisualizer {
             document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
             this.forceDraw();
         });
+        
+        // ===== UI TRANSPARENCY CONTROL =====
+        document.getElementById('uiTransparency').addEventListener('input', (e) => {
+            const transparency = parseFloat(e.target.value);
+            this.updateUITransparency(transparency);
+            document.getElementById('transparencyValue').textContent = Math.round(transparency * 100) + '%';
+        });
+    }
+    
+    /**
+     * Updates the transparency of all UI control panels
+     * @param {number} transparency - Transparency value between 0 and 0.75
+     */
+    updateUITransparency(transparency) {
+        // Create or update the CSS variables for UI transparency
+        const root = document.documentElement;
+        
+        // Calculate the background opacity (inverse of transparency)
+        const bgOpacity = 1 - transparency;
+        
+        // Update the CSS variables
+        root.style.setProperty('--control-bg-opacity', bgOpacity.toFixed(2));
+        
+        // Apply the new styles to control panels
+        const controls = document.querySelectorAll('.control-group');
+        controls.forEach(control => {
+            control.style.backgroundColor = `rgba(0, 0, 0, ${bgOpacity.toFixed(2)})`;
+        });
+        
+        // Also update the container for better visibility
+        const controlsContainer = document.querySelector('.controls');
+        if (controlsContainer) {
+            controlsContainer.style.backgroundColor = `rgba(0, 0, 0, ${Math.max(bgOpacity - 0.1, 0).toFixed(2)})`;
+        }
     }
     
     /**
@@ -743,8 +777,21 @@ class AudioVisualizer {
         // Create a style element
         const styleEl = document.createElement('style');
         
-        // Define styles for dropdowns
+        // Define styles for dropdowns and add CSS variables for UI transparency
         styleEl.textContent = `
+            :root {
+                --control-bg-opacity: 1.0;
+            }
+            
+            .controls {
+                transition: background-color 0.3s ease;
+            }
+            
+            .control-group {
+                background-color: rgba(0, 0, 0, var(--control-bg-opacity));
+                transition: background-color 0.3s ease;
+            }
+            
             select {
                 background-color: #121212;
                 color: white;
@@ -770,7 +817,7 @@ class AudioVisualizer {
         // Add the style element to the document head
         document.head.appendChild(styleEl);
         
-        console.log('Applied custom dropdown styles to fix white-on-white issue');
+        console.log('Applied custom dropdown and UI transparency styles');
     }
     
     // ========================================================================
