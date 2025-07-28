@@ -354,7 +354,29 @@ for their YouTube videos, podcasts, and social media content.
                 <button id="playBtn" disabled>Play</button>
                 <button id="pauseBtn" disabled>Pause</button>
             </div>
-            
+
+            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
+            <div class="control-group">
+                <h4>🖼️ Background image</h4>
+                <!-- Background image file input -->
+                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
+                <button id="clearBg">Clear BG</button>
+                
+                <!-- Background opacity control -->
+                <div class="slider-group">
+                    <label>BG Opacity:</label>
+                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
+                    <span id="opacityValue">0.7</span>
+                </div>
+                
+                <!-- Background scaling control -->
+                <div class="slider-group">
+                    <label>BG Scale:</label>
+                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
+                    <span id="bgScaleValue">1.0x</span>
+                </div>
+            </div>
+
             <!-- ===== VISUALIZATION MODE SELECTION ===== -->
             <div class="control-group">
                 <h4>🎨 Visualization</h4>
@@ -474,27 +496,8 @@ for their YouTube videos, podcasts, and social media content.
                 </div>
             </div>
             
-            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
-            <div class="control-group">
-                <h4>🖼️ Background</h4>
-                <!-- Background image file input -->
-                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
-                <button id="clearBg">Clear BG</button>
-                
-                <!-- Background opacity control -->
-                <div class="slider-group">
-                    <label>BG Opacity:</label>
-                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
-                    <span id="opacityValue">0.7</span>
-                </div>
-                
-                <!-- Background scaling control -->
-                <div class="slider-group">
-                    <label>BG Scale:</label>
-                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
-                    <span id="bgScaleValue">1.0x</span>
-                </div>
-            </div>
+            
+            
         </div>
 
         <!-- ===== INFORMATION DISPLAY PANEL ===== -->
