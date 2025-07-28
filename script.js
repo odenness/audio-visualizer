@@ -496,6 +496,11 @@ class AudioVisualizer {
             this.updateUITransparency(transparency);
             document.getElementById('transparencyValue').textContent = Math.round(transparency * 100) + '%';
         });
+        
+        // ===== RECORDING CONTROLS INITIALIZATION =====
+        initializeRecordingControls();
+        updateBitrateDisplay();
+        updateAudioBitrateDisplay();
     }
     
     /**
@@ -595,6 +600,8 @@ class AudioVisualizer {
                 <div>Duration: ${Math.floor(this.audio.duration / 60)}:${Math.floor(this.audio.duration % 60).toString().padStart(2, '0')}</div>
                 <div>Click Play to start visualization</div>
             `;
+            
+            updateRecordingControlsState(); // Enable recording controls
         };
         
         // Error handler - fall back to demo mode
@@ -1275,6 +1282,417 @@ function setColorPreset(preset) {
         window.visualizer.forceDraw();
     }
 }
+
+// Recording state variables
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let recordingStartTime = 0;
+
+// Recording quality presets
+const qualityPresets = {
+    '720p': { width: 1280, height: 720, videoBitrate: 4000000, audioBitrate: 192000 },
+    '1080p': { width: 1920, height: 1080, videoBitrate: 8000000, audioBitrate: 192000 },
+    '4K': { width: 3840, height: 2160, videoBitrate: 20000000, audioBitrate: 320000 }
+};
+
+// Enable/disable recording controls based on audio state
+function updateRecordingControlsState() {
+    const recordBtn = document.getElementById('recordBtn');
+    const audio = document.getElementById('audio');
+    
+    if (audio && audio.src && audio.readyState >= 2) { // HAVE_CURRENT_DATA or higher
+        recordBtn.disabled = false;
+    } else {
+        recordBtn.disabled = true;
+    }
+}
+
+// Modified audio file handling to enable recording controls
+function handleAudioLoad() {
+    const audioFile = document.getElementById('audioFile');
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    
+    if (audioFile.files.length > 0) {
+        const file = audioFile.files[0];
+        const url = URL.createObjectURL(file);
+        audio.src = url;
+        
+        audio.addEventListener('loadeddata', function() {
+            playBtn.disabled = false;
+            pauseBtn.disabled = false;
+            updateRecordingControlsState(); // Enable recording controls
+        });
+        
+        audio.addEventListener('canplaythrough', function() {
+            updateRecordingControlsState(); // Ensure recording is enabled when fully loaded
+        });
+    }
+}
+
+// Initialize recording controls
+function initializeRecordingControls() {
+    const recordBtn = document.getElementById('recordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    const qualitySelect = document.getElementById('recordingQuality');
+    const customBitrate = document.getElementById('customBitrate');
+    const videoBitrateSlider = document.getElementById('videoBitrate');
+    const audioBitrateSlider = document.getElementById('audioBitrate');
+    const bitrateValue = document.getElementById('bitrateValue');
+    const audioBitrateValue = document.getElementById('audioBitrateValue');
+
+    recordBtn.addEventListener('click', startRecording);
+    stopRecordBtn.addEventListener('click', stopRecording);
+    
+    qualitySelect.addEventListener('change', handleQualityChange);
+    videoBitrateSlider.addEventListener('input', updateBitrateDisplay);
+    audioBitrateSlider.addEventListener('input', updateAudioBitrateDisplay);
+    
+    // Add audio file change event listener
+    const audioFile = document.getElementById('audioFile');
+    audioFile.addEventListener('change', handleAudioLoad);
+}
+
+// Handle quality selection changes
+function handleQualityChange() {
+    const qualitySelect = document.getElementById('recordingQuality');
+    const customBitrate = document.getElementById('customBitrate');
+    
+    if (qualitySelect.value === 'custom') {
+        customBitrate.style.display = 'block';
+    } else {
+        customBitrate.style.display = 'none';
+    }
+}
+
+// Update bitrate display values
+function updateBitrateDisplay() {
+    const videoBitrateSlider = document.getElementById('videoBitrate');
+    const bitrateValue = document.getElementById('bitrateValue');
+    bitrateValue.textContent = `${videoBitrateSlider.value} Mbps`;
+}
+
+function updateAudioBitrateDisplay() {
+    const audioBitrateSlider = document.getElementById('audioBitrate');
+    const audioBitrateValue = document.getElementById('audioBitrateValue');
+    audioBitrateValue.textContent = `${audioBitrateSlider.value} kbps`;
+}
+
+// Get recording configuration based on selected quality
+function getRecordingConfig() {
+    const qualitySelect = document.getElementById('recordingQuality');
+    const outputFormat = document.getElementById('outputFormat');
+    const quality = qualitySelect.value;
+    
+    let config;
+    
+    if (quality === 'custom') {
+        const videoBitrate = document.getElementById('videoBitrate').value * 1000000; // Convert to bps
+        const audioBitrate = document.getElementById('audioBitrate').value * 1000; // Convert to bps
+        config = {
+            videoBitrate,
+            audioBitrate,
+            width: window.visualizer?.canvas?.width || 1920,
+            height: window.visualizer?.canvas?.height || 1080
+        };
+    } else {
+        config = qualityPresets[quality];
+    }
+    
+    const mimeType = outputFormat.value === 'mp4' && MediaRecorder.isTypeSupported('video/mp4') 
+        ? 'video/mp4' 
+        : 'video/webm;codecs=vp9,opus';
+    
+    return { ...config, mimeType };
+}
+
+// Create media stream from canvas and audio
+function createRecordingStream(config) {
+    try {
+        // Access canvas and audio context from the visualizer instance
+        const canvas = window.visualizer.canvas;
+        const audioContext = window.visualizer.audioContext;
+        const analyser = window.visualizer.analyser;
+        
+        if (!canvas) {
+            throw new Error('Canvas not available');
+        }
+        
+        // Capture canvas stream
+        const canvasStream = canvas.captureStream(30); // 30 fps
+        const videoTrack = canvasStream.getVideoTracks()[0];
+        
+        if (!videoTrack) {
+            throw new Error('Could not capture video from canvas');
+        }
+        
+        let combinedStream;
+        
+        // Check if audio context and analyser are available
+        if (audioContext && analyser) {
+            try {
+                // Create audio destination for recording
+                const audioDestination = audioContext.createMediaStreamDestination();
+                
+                // Connect audio nodes to destination
+                analyser.connect(audioDestination);
+                
+                const audioTrack = audioDestination.stream.getAudioTracks()[0];
+                
+                if (audioTrack) {
+                    // Combine video and audio tracks
+                    combinedStream = new MediaStream([videoTrack, audioTrack]);
+                } else {
+                    // Fall back to video only if no audio track
+                    console.warn('No audio track available, recording video only');
+                    combinedStream = new MediaStream([videoTrack]);
+                }
+            } catch (audioError) {
+                console.warn('Error setting up audio recording, falling back to video only:', audioError);
+                combinedStream = new MediaStream([videoTrack]);
+            }
+        } else {
+            // No audio context available, record video only
+            console.warn('No audio context available, recording video only');
+            combinedStream = new MediaStream([videoTrack]);
+        }
+        
+        return combinedStream;
+    } catch (error) {
+        console.error('Error creating recording stream:', error);
+        updateRecordingStatus('Error: Could not create recording stream - ' + error.message);
+        return null;
+    }
+}
+
+// Start recording process
+function startRecording() {
+    const audio = document.getElementById('audio');
+    
+    if (!window.visualizer) {
+        updateRecordingStatus('Error: Visualizer not initialized');
+        return;
+    }
+    
+    if (!audio.src) {
+        updateRecordingStatus('Error: No audio file loaded');
+        return;
+    }
+    
+    if (!audio.readyState || audio.readyState < 2) {
+        updateRecordingStatus('Error: Audio not ready for playback');
+        return;
+    }
+    
+    const config = getRecordingConfig();
+    const stream = createRecordingStream(config);
+    
+    if (!stream) return;
+    
+    try {
+        // Reset audio to beginning for full recording
+        audio.currentTime = 0;
+        
+        // Configure MediaRecorder
+        const options = {
+            mimeType: config.mimeType
+        };
+        
+        // Add bitrate options if specified
+        if (config.videoBitrate) {
+            options.videoBitsPerSecond = config.videoBitrate;
+        }
+        if (config.audioBitrate) {
+            options.audioBitsPerSecond = config.audioBitrate;
+        }
+        
+        mediaRecorder = new MediaRecorder(stream, options);
+        recordedChunks = [];
+        
+        mediaRecorder.ondataavailable = handleRecordingData;
+        mediaRecorder.onstop = handleRecordingStop;
+        mediaRecorder.onerror = handleRecordingError;
+        
+        // Start recording and audio playback
+        mediaRecorder.start();
+        
+        // Start audio playback through the visualizer's play method
+        window.visualizer.play();
+        
+        isRecording = true;
+        recordingStartTime = Date.now();
+        
+        updateRecordingUI(true);
+        updateRecordingStatus('Recording in progress...');
+        
+        // Auto-stop when audio ends
+        audio.addEventListener('ended', autoStopRecording, { once: true });
+        
+        // Update progress during recording
+        startRecordingProgressUpdate();
+        
+    } catch (error) {
+        console.error('Error starting recording:', error);
+        updateRecordingStatus('Error: Could not start recording - ' + error.message);
+    }
+}
+
+// Handle recording data chunks
+function handleRecordingData(event) {
+    if (event.data && event.data.size > 0) {
+        recordedChunks.push(event.data);
+    }
+}
+
+// Stop recording process
+function stopRecording() {
+    if (!isRecording || !mediaRecorder) return;
+    
+    try {
+        mediaRecorder.stop();
+        
+        // Stop audio playback through the visualizer
+        if (window.visualizer) {
+            window.visualizer.pause();
+        }
+        
+        isRecording = false;
+        
+        updateRecordingStatus('Processing recording...');
+    } catch (error) {
+        console.error('Error stopping recording:', error);
+        updateRecordingStatus('Error stopping recording');
+    }
+}
+
+// Auto-stop recording when audio ends
+function autoStopRecording() {
+    if (isRecording) {
+        stopRecording();
+    }
+}
+
+// Handle recording completion
+function handleRecordingStop() {
+    if (recordedChunks.length === 0) {
+        updateRecordingStatus('Error: No recording data');
+        updateRecordingUI(false);
+        return;
+    }
+    
+    try {
+        const config = getRecordingConfig();
+        const blob = new Blob(recordedChunks, { type: config.mimeType });
+        const filename = generateRecordingFilename(config);
+        
+        downloadRecording(blob, filename);
+        
+        const fileSize = (blob.size / (1024 * 1024)).toFixed(2);
+        updateRecordingStatus(`Recording saved: ${filename} (${fileSize} MB)`);
+        
+    } catch (error) {
+        console.error('Error processing recording:', error);
+        updateRecordingStatus('Error processing recording');
+    }
+    
+    updateRecordingUI(false);
+    recordedChunks = [];
+}
+
+// Handle recording errors
+function handleRecordingError(event) {
+    console.error('Recording error:', event.error);
+    updateRecordingStatus(`Recording error: ${event.error.message}`);
+    updateRecordingUI(false);
+    isRecording = false;
+}
+
+// Generate filename for recording
+function generateRecordingFilename(config) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const quality = document.getElementById('recordingQuality').value;
+    const format = document.getElementById('outputFormat').value;
+    
+    return `audio-visualization-${quality}-${timestamp}.${format}`;
+}
+
+// Download recorded video
+function downloadRecording(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    // Clean up object URL after download
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Update recording UI state
+function updateRecordingUI(recording) {
+    const recordBtn = document.getElementById('recordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    
+    recordBtn.style.display = recording ? 'none' : 'inline-block';
+    stopRecordBtn.style.display = recording ? 'inline-block' : 'none';
+    
+    recordBtn.disabled = recording;
+    playBtn.disabled = recording;
+    pauseBtn.disabled = recording;
+}
+
+// Update recording status message
+function updateRecordingStatus(message) {
+    const statusElement = document.getElementById('recordingStatus');
+    statusElement.textContent = message;
+}
+
+// Update recording progress
+function startRecordingProgressUpdate() {
+    const updateProgress = () => {
+        if (!isRecording) return;
+        
+        const audio = document.getElementById('audio');
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        const duration = Math.floor(audio.duration || 0);
+        const remaining = Math.max(0, duration - elapsed);
+        
+        updateRecordingStatus(
+            `Recording: ${formatTime(elapsed)}/${formatTime(duration)} (${formatTime(remaining)} remaining)`
+        );
+        
+        if (isRecording) {
+            setTimeout(updateProgress, 1000);
+        }
+    };
+    
+    updateProgress();
+}
+
+// Format time in MM:SS format
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// Initialize recording when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    // ...existing code...
+    
+    initializeRecordingControls();
+    updateBitrateDisplay();
+    updateAudioBitrateDisplay();
+    updateRecordingControlsState(); // Initial state check
+});
 
 // Create the main visualizer instance when page loads
 let visualizer;

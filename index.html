@@ -288,13 +288,46 @@ for their YouTube videos, podcasts, and social media content.
 
     <!-- External JavaScript file for all functionality -->
     <script src="script.js"></script>
-</body>
-</html>
-            background: rgba(255,255,255,0.2);
-            transform: none; /* No lift effect for preset buttons */
-            box-shadow: none;
-        }
 
+    <style>
+        /* ===== CONSISTENT WIDTH FOR ALL CONTROL GROUPS ===== */
+        .control-group {
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            margin: 0; /* Remove vertical gap between control groups */
+            border-radius: 8px;
+            border-left: 3px solid rgba(255,255,255,0.3);
+            width: 350px; /* Fixed width for all control groups */
+            box-sizing: border-box; /* Include padding in width calculation */
+        }
+        
+        /* Ensure controls container doesn't restrict width */
+        .controls {
+            width: auto;
+            min-width: 370px; /* Slightly larger than control groups for padding */
+        }
+        
+        /* Make sure all input elements fit within the fixed width */
+        .control-group input[type="range"] {
+            flex: 1;
+            max-width: 120px;
+        }
+        
+        .control-group select {
+            width: 100%;
+            max-width: 200px;
+        }
+        
+        .control-group input[type="file"] {
+            width: 100%;
+            max-width: 250px;
+        }
+        
+        /* Ensure custom dimension inputs don't overflow */
+        #customAspect input {
+            width: 70px !important;
+        }
+        
         /* ===== INFO PANEL STYLING ===== */
         /* Bottom-right information display */
         .info {
@@ -324,9 +357,5 @@ for their YouTube videos, podcasts, and social media content.
             min-width: 30px; /* Consistent width for alignment */
         }
     </style>
-</head>
-<body>
-   
-    
 </body>
 </html>
