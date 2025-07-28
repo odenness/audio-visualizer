@@ -911,6 +911,9 @@ class AudioVisualizer {
                 const brightness = 50 + (intensity * 50);
                 return `hsl(220, 30%, ${brightness}%)`;
             
+            case 'imageMatched':
+                return getImageMatchedColor(index, total);
+            
             default:
                 return `hsl(${(index / total) * 360}, 80%, 60%)`;
         }
@@ -1699,4 +1702,224 @@ let visualizer;
 document.addEventListener('DOMContentLoaded', () => {
     visualizer = new AudioVisualizer();
     window.visualizer = visualizer; // Make it globally accessible for color presets
+});
+
+// Add global variables for image color analysis
+let imageColorPalette = {
+    brightest: '#ffffff',
+    darkest: '#000000',
+    dominant: [],
+    isAnalyzed: false
+};
+
+// Add image color analysis functions
+const analyzeImageColors = (imageElement) => {
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Scale down image for faster analysis
+    const analysisSize = 100;
+    tempCanvas.width = analysisSize;
+    tempCanvas.height = analysisSize;
+    
+    tempCtx.drawImage(imageElement, 0, 0, analysisSize, analysisSize);
+    
+    const imageData = tempCtx.getImageData(0, 0, analysisSize, analysisSize);
+    const pixels = imageData.data;
+    
+    const colors = [];
+    let brightestLuminance = 0;
+    let darkestLuminance = 1;
+    let brightestColor = '#ffffff';
+    let darkestColor = '#000000';
+    
+    // Sample every nth pixel for performance
+    for (let i = 0; i < pixels.length; i += 16) { // Every 4th pixel
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+        const a = pixels[i + 3];
+        
+        // Skip transparent pixels
+        if (a < 128) continue;
+        
+        // Calculate luminance
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        
+        // Track brightest color
+        if (luminance > brightestLuminance) {
+            brightestLuminance = luminance;
+            brightestColor = rgbToHex(r, g, b);
+        }
+        
+        // Track darkest color
+        if (luminance < darkestLuminance) {
+            darkestLuminance = luminance;
+            darkestColor = rgbToHex(r, g, b);
+        }
+        
+        colors.push({ r, g, b, luminance });
+    }
+    
+    // Extract dominant colors using simple clustering
+    const dominantColors = extractDominantColors(colors, 5);
+    
+    imageColorPalette = {
+        brightest: brightestColor,
+        darkest: darkestColor,
+        dominant: dominantColors,
+        isAnalyzed: true
+    };
+    
+    return imageColorPalette;
+};
+
+const extractDominantColors = (colors, numColors) => {
+    if (colors.length === 0) return [];
+    
+    // Simple color quantization - group similar colors
+    const buckets = [];
+    const threshold = 40; // Color similarity threshold
+    
+    colors.forEach(color => {
+        let foundBucket = false;
+        
+        for (let bucket of buckets) {
+            const avgColor = bucket.avg;
+            const distance = Math.sqrt(
+                Math.pow(color.r - avgColor.r, 2) +
+                Math.pow(color.g - avgColor.g, 2) +
+                Math.pow(color.b - avgColor.b, 2)
+            );
+            
+            if (distance < threshold) {
+                bucket.colors.push(color);
+                bucket.avg = {
+                    r: Math.round(bucket.colors.reduce((sum, c) => sum + c.r, 0) / bucket.colors.length),
+                    g: Math.round(bucket.colors.reduce((sum, c) => sum + c.g, 0) / bucket.colors.length),
+                    b: Math.round(bucket.colors.reduce((sum, c) => sum + c.b, 0) / bucket.colors.length)
+                };
+                foundBucket = true;
+                break;
+            }
+        }
+        
+        if (!foundBucket) {
+            buckets.push({
+                colors: [color],
+                avg: { r: color.r, g: color.g, b: color.b }
+            });
+        }
+    });
+    
+    // Sort by bucket size and return top colors
+    buckets.sort((a, b) => b.colors.length - a.colors.length);
+    
+    return buckets.slice(0, numColors).map(bucket => 
+        rgbToHex(bucket.avg.r, bucket.avg.g, bucket.avg.b)
+    );
+};
+
+const rgbToHex = (r, g, b) => {
+    return '#' + [r, g, b].map(x => {
+        const hex = Math.round(x).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+};
+
+const getImageMatchedColor = (index, total) => {
+    if (!imageColorPalette.isAnalyzed) {
+        return '#ffffff'; // Fallback
+    }
+    
+    const { brightest, darkest, dominant } = imageColorPalette;
+    
+    // Create gradient between darkest and brightest
+    const ratio = index / total;
+    
+    if (dominant.length >= 3) {
+        // Use dominant colors for variety
+        const colorIndex = Math.floor(ratio * dominant.length);
+        return dominant[colorIndex] || brightest;
+    } else {
+        // Interpolate between darkest and brightest
+        return interpolateColor(darkest, brightest, ratio);
+    }
+};
+
+const interpolateColor = (color1, color2, factor) => {
+    const rgb1 = hexToRgb(color1);
+    const rgb2 = hexToRgb(color2);
+    
+    if (!rgb1 || !rgb2) return color1;
+    
+    const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * factor);
+    const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * factor);
+    const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * factor);
+    
+    return rgbToHex(r, g, b);
+};
+
+const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+};
+
+// Modify the getBarColor function to include image matched mode
+const getBarColor = (index, total, height) => {
+    const mode = document.getElementById('colorMode').value;
+    
+    switch (mode) {
+        case 'rainbow':
+            const hue = (index / total) * 360;
+            return `hsl(${hue}, 100%, ${50 + (height * 0.5)}%)`;
+        
+        case 'custom':
+            const colors = [
+                document.getElementById('color1').value,
+                document.getElementById('color2').value,
+                document.getElementById('color3').value
+            ];
+            const colorIndex = Math.floor((index / total) * colors.length);
+            return colors[colorIndex] || colors[0];
+        
+        case 'gradient':
+            const color1 = document.getElementById('color1').value;
+            const color2 = document.getElementById('color2').value;
+            return interpolateColor(color1, color2, index / total);
+        
+        case 'monochrome':
+            const intensity = 50 + (height * 0.5);
+            return `hsl(0, 0%, ${intensity}%)`;
+        
+        case 'imageMatched':
+            return getImageMatchedColor(index, total);
+        
+        default:
+            return '#ffffff';
+    }
+};
+
+// Modify the background image loading to trigger color analysis
+// Update the existing backgroundImage.onload event
+document.getElementById('backgroundImage').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            backgroundImg = new Image();
+            backgroundImg.onload = function() {
+                hasBackground = true;
+                // Analyze colors when image loads
+                analyzeImageColors(backgroundImg);
+                updateDisplay();
+            };
+            backgroundImg.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
 });
