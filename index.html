@@ -131,7 +131,27 @@ for their YouTube videos, podcasts, and social media content.
                     <option value="mp4">MP4 (if supported)</option>
                 </select>
             </div>
-            
+            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
+            <div class="control-group">
+                <h4>🖼️ Background image</h4>
+                <!-- Background image file input -->
+                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
+                <button id="clearBg">Clear BG</button>
+                
+                <!-- Background opacity control -->
+                <div class="slider-group">
+                    <label>BG Opacity:</label>
+                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
+                    <span id="opacityValue">0.7</span>
+                </div>
+                
+                <!-- Background scaling control -->
+                <div class="slider-group">
+                    <label>BG Scale:</label>
+                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
+                    <span id="bgScaleValue">1.0x</span>
+                </div>
+            </div>
             <!-- ===== VISUALIZATION MODE SELECTION ===== -->
             <div class="control-group">
                 <h4>🎨 Visualization</h4>
@@ -251,27 +271,7 @@ for their YouTube videos, podcasts, and social media content.
                 </div>
             </div>
             
-            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
-            <div class="control-group">
-                <h4>🖼️ Background</h4>
-                <!-- Background image file input -->
-                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
-                <button id="clearBg">Clear BG</button>
-                
-                <!-- Background opacity control -->
-                <div class="slider-group">
-                    <label>BG Opacity:</label>
-                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
-                    <span id="opacityValue">0.7</span>
-                </div>
-                
-                <!-- Background scaling control -->
-                <div class="slider-group">
-                    <label>BG Scale:</label>
-                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
-                    <span id="bgScaleValue">1.0x</span>
-                </div>
-            </div>
+            
         </div>
 
         <!-- ===== INFORMATION DISPLAY PANEL ===== -->
@@ -326,192 +326,7 @@ for their YouTube videos, podcasts, and social media content.
     </style>
 </head>
 <body>
-    <!-- 
-    ================================================================================
-    HTML STRUCTURE SECTION
-    ================================================================================
-    Main application layout with:
-    - Full-screen visualizer container
-    - Canvas element for rendering
-    - Control panels for user interaction
-    - Audio element for playback
-    ================================================================================
-    -->
-    
-    <!-- Main visualizer container -->
-    <div id="visualizer">
-        <!-- Canvas for audio visualization rendering -->
-        <canvas id="canvas"></canvas>
-        
-        <!-- Control panels for user interaction -->
-        <div class="controls">
-            <!-- ===== AUDIO FILE LOADING AND PLAYBACK CONTROLS ===== -->
-            <div class="control-group">
-                <h4>📁 Audio Controls</h4>
-                <!-- File input for audio upload - accepts multiple audio formats -->
-                <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.ogg,.m4a">
-                <!-- Playback control buttons - disabled until audio is loaded -->
-                <button id="playBtn" disabled>Play</button>
-                <button id="pauseBtn" disabled>Pause</button>
-            </div>
-
-            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
-            <div class="control-group">
-                <h4>🖼️ Background image</h4>
-                <!-- Background image file input -->
-                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
-                <button id="clearBg">Clear BG</button>
-                
-                <!-- Background opacity control -->
-                <div class="slider-group">
-                    <label>BG Opacity:</label>
-                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
-                    <span id="opacityValue">0.7</span>
-                </div>
-                
-                <!-- Background scaling control -->
-                <div class="slider-group">
-                    <label>BG Scale:</label>
-                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
-                    <span id="bgScaleValue">1.0x</span>
-                </div>
-            </div>
-
-            <!-- ===== VISUALIZATION MODE SELECTION ===== -->
-            <div class="control-group">
-                <h4>🎨 Visualization</h4>
-                <label>Mode:</label>
-                <!-- Dropdown for selecting visualization type -->
-                <select id="visualMode">
-                    <option value="bars">Classic Bars</option>
-                    <option value="bars_mirror">Mirror Bars</option> 
-                    <option value="bars_center">Center Bars</option>
-                    <option value="bars_radial">Radial Bars</option>
-                    <option value="bars_wave">Wave Bars</option>
-                    <option value="bars_stacked">Stacked Bars</option>
-                    <option value="circle">Circular</option>
-                    <option value="waveform">Waveform</option>
-                    <option value="particles">Particles</option><!-- Default/recommended -->
-                    <option value="spiral">Spiral</option>
-                </select>
-            </div>
-
-            <!-- ===== COLOR SCHEME AND STYLING CONTROLS ===== -->
-            <div class="control-group">
-                <h4>🎨 Color Scheme</h4>
-                <label>Color Mode:</label>
-                <!-- Color mode selection dropdown -->
-                <select id="colorMode">
-                    <option value="rainbow">Rainbow Spectrum</option>
-                    <option value="custom">Custom Colors</option>
-                    <option value="gradient">Two-Color Gradient</option>
-                    <option value="monochrome">Monochrome</option>
-                </select>
-                
-                <!-- Custom color picker section - hidden by default -->
-                <div id="customColors" style="display: none;">
-                    <label>Primary:</label>
-                    <input type="color" id="color1" value="#ff6b6b">
-                    <label>Secondary:</label>
-                    <input type="color" id="color2" value="#4ecdc4">
-                    <label>Accent:</label>
-                    <input type="color" id="color3" value="#45b7d1">
-                </div>
-
-                <!-- Quick color preset buttons -->
-                <div class="color-preset">
-                    <button class="preset-btn" onclick="setColorPreset('neon')">Neon</button>
-                    <button class="preset-btn" onclick="setColorPreset('ocean')">Ocean</button>
-                    <button class="preset-btn" onclick="setColorPreset('sunset')">Sunset</button>
-                    <button class="preset-btn" onclick="setColorPreset('cyberpunk')">Cyber</button>
-                </div>
-            </div>
-
-            <!-- ===== SIZE, SCALE, AND SENSITIVITY CONTROLS ===== -->
-            <div class="control-group">
-                <h4>📏 Size & Scale</h4>
-                <!-- Overall visualizer scaling -->
-                <div class="slider-group">
-                    <label>Visualizer Scale:</label>
-                    <input type="range" id="visualizerScale" min="0.3" max="2" step="0.1" value="1">
-                    <span id="scaleValue">1.0x</span>
-                </div>
-                
-                <!-- Audio sensitivity/responsiveness -->
-                <div class="slider-group">
-                    <label>Bar Sensitivity:</label>
-                    <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1">
-                    <span id="sensitivityValue">1.0x</span>
-                </div>
-                
-                <!-- Bar width/thickness control -->
-                <div class="slider-group">
-                    <label>Bar Thickness:</label>
-                    <input type="range" id="barThickness" min="0.2" max="3" step="0.1" value="1">
-                    <span id="thicknessValue">1.0x</span>
-                </div>
-                
-                <!-- Number of frequency bars to display -->
-                <div class="slider-group">
-                    <label>Bar Count:</label>
-                    <input type="range" id="barCount" min="32" max="512" step="16" value="256">
-                    <span id="barCountValue">256</span>
-                </div>
-            </div>
-            
-            <!-- ===== ASPECT RATIO AND RESOLUTION CONTROLS ===== -->
-            <div class="control-group">
-                <h4>📺 Aspect Ratio</h4>
-                <!-- Aspect ratio selection for different content types -->
-                <select id="aspectRatio">
-                    <option value="fullscreen">Fullscreen</option>
-                    <option value="16:9">16:9 (1920x1080)</option> <!-- Standard YouTube -->
-                    <option value="21:9">21:9 (Ultrawide)</option>
-                    <option value="4:3">4:3 (Classic)</option>
-                    <option value="1:1">1:1 (Square)</option> <!-- Instagram -->
-                    <option value="9:16">9:16 (Vertical/Mobile)</option> <!-- TikTok, Stories -->
-                    <option value="custom">Custom</option>
-                </select>
-                
-                <!-- Custom dimension inputs - shown only when custom is selected -->
-                <div id="customAspect" style="display: none; margin-top: 10px;">
-                    <div class="slider-group">
-                        <label>Width:</label>
-                        <input type="number" id="customWidth" value="1920" min="320" max="3840" style="width: 80px; padding: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px;">
-                        <label style="margin-left: 10px;">Height:</label>
-                        <input type="number" id="customHeight" value="1080" min="240" max="2160" style="width: 80px; padding: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 3px;">
-                    </div>
-                </div>
-                
-                <!-- UI Transparency control -->
-                <div class="slider-group" style="margin-top: 10px;">
-                    <label>UI Transparency:</label>
-                    <input type="range" id="uiTransparency" min="0" max="0.75" step="0.05" value="0">
-                    <span id="transparencyValue">0%</span>
-                </div>
-                
-                <!-- Current resolution display -->
-                <div style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
-                    Current: <span id="currentResolution">Fullscreen</span>
-                </div>
-            </div>
-            
-            
-            
-        </div>
-
-        <!-- ===== INFORMATION DISPLAY PANEL ===== -->
-        <!-- Bottom-right info panel with usage instructions and status -->
-        <div class="info">
-            <div>Upload an audio file to start visualizing</div>
-            <div>Supported formats: MP3, WAV, OGG, M4A</div>
-            <div>Perfect for screen recording for YouTube videos</div>
-        </div>
-    </div>
-
-    <!-- Hidden audio element for playback -->
-    <audio id="audio" style="display: none;"></audio>
-
+   
     
 </body>
 </html>
