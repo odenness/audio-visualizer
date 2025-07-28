@@ -37,17 +37,6 @@ class AudioVisualizer {
         // ===== PARTICLE SYSTEM FOR PARTICLE VISUALIZATION MODE =====
         this.particles = [];             // Array of particle objects
         
-        // ===== VIDEO RECORDING COMPONENTS =====
-        this.mediaRecorder = null;        // MediaRecorder instance
-        this.recordedChunks = [];         // Video data chunks
-        this.isRecording = false;         // Recording state
-        this.recordingStream = null;      // Canvas + Audio stream
-        this.recordingQuality = '1080p';  // Default quality
-        this.videoBitrate = 8;            // Video bitrate in Mbps
-        this.audioBitrate = 192;          // Audio bitrate in kbps
-        this.outputFormat = 'webm';       // Output format
-        this.recordingTimer = null;       // Timer for recording duration display
-        
         // ===== VISUALIZATION SETTINGS WITH DEFAULT VALUES =====
         this.visualMode = 'bars_mirror';  // Default to mirror bars (recommended)
         this.colorMode = 'rainbow';       // Default color scheme
@@ -68,49 +57,23 @@ class AudioVisualizer {
         this.setupCanvas();           // Configure canvas and resize handling
         this.setupEventListeners();   // Bind UI event handlers
         this.setupParticles();        // Initialize particle system
-        this.setupRecordingControls(); // Configure recording functionality
+        
+        // Select the default visualization mode in the dropdown
+        document.getElementById('visualMode').value = this.visualMode;
     }
     
+    /**
+     * Sets up canvas sizing and window resize handling
+     * Configures initial canvas dimensions and responsive behavior
+     */
     setupCanvas() {
         this.updateCanvasSize();
         
         window.addEventListener('resize', () => {
             if (this.aspectRatio === 'fullscreen') {
                 this.updateCanvasSize();
+                this.forceDraw(); // Force redraw when resizing
             }
-        });
-    }
-    
-    /**
-     * Applies aspect ratio changes and forces a redraw
-     * Called when aspect ratio or custom dimensions change
-     */
-    applyAspectRatioChange() {
-        // Update canvas dimensions based on new aspect ratio
-        this.updateCanvasSize();
-        
-        // Force a redraw if not currently animating
-        if (!this.animationId) {
-            this.forceDraw();
-        }
-        
-        // Log the aspect ratio change
-        console.log('Aspect ratio changed to:', this.aspectRatio, 
-                    'Canvas size:', this.canvasWidth, 'x', this.canvasHeight);
-    }
-    
-    /**
-     * Forces a single draw cycle even when not animating
-     * Useful when settings change but no animation loop is active
-     */
-    forceDraw() {
-        // If no animation is running, draw a single frame
-        requestAnimationFrame(() => {
-            // Clear the canvas with the proper dimensions
-            this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-            
-            // Draw a frame
-            this.draw();
         });
     }
     
@@ -184,11 +147,425 @@ class AudioVisualizer {
     }
     
     /**
+     * Apply aspect ratio changes and forces a redraw
+     * Called when aspect ratio or custom dimensions change
+     */
+    applyAspectRatioChange() {
+        // Update canvas dimensions based on new aspect ratio
+        this.updateCanvasSize();
+        
+        // Force a redraw if not currently animating
+        this.forceDraw();
+        
+        console.log('Aspect ratio changed to:', this.aspectRatio, 
+                   'Canvas size:', this.canvasWidth, 'x', this.canvasHeight);
+    }
+    
+    /**
+     * Forces a single draw cycle even when not animating
+     * Useful when settings change but no animation loop is active
+     */
+    forceDraw() {
+        // If no animation is running, draw a single frame
+        requestAnimationFrame(() => {
+            // Clear the canvas with the proper dimensions
+            this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+            
+            // Draw a frame
+            this.draw();
+        });
+    }
+    
+    /**
+     * Sets up all user interface event listeners
+     * Handles file uploads, playback controls, visualization settings,
+     * color controls, scaling options, and background management
+     */
+    setupEventListeners() {
+        // ===== GET DOM ELEMENTS FOR EVENT BINDING =====
+        const fileInput = document.getElementById('audioFile');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const visualMode = document.getElementById('visualMode');
+        const colorMode = document.getElementById('colorMode');
+        const backgroundInput = document.getElementById('backgroundImage');
+        const clearBgBtn = document.getElementById('clearBg');
+        
+        // ===== AUDIO FILE SELECTION HANDLER =====
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.currentFileName = file.name;
+                this.loadAudio(file);
+            }
+        });
+        
+        // ===== PLAYBACK CONTROL HANDLERS =====
+        playBtn.addEventListener('click', () => this.play());
+        pauseBtn.addEventListener('click', () => this.pause());
+        
+        // ===== VISUALIZATION MODE CHANGE HANDLER =====
+        visualMode.addEventListener('change', (e) => {
+            this.visualMode = e.target.value;
+            console.log('Visualization mode changed to:', this.visualMode);
+            
+            // Reinitialize particles if switching to particle mode
+            if (this.visualMode === 'particles') {
+                this.setupParticles();
+            }
+            
+            // Force a redraw to show the new visualization immediately
+            this.forceDraw();
+        });
+        
+        // ===== COLOR MODE CHANGE HANDLER =====
+        colorMode.addEventListener('change', (e) => {
+            this.colorMode = e.target.value;
+            const customDiv = document.getElementById('customColors');
+            // Show/hide custom color controls based on mode
+            customDiv.style.display = e.target.value === 'custom' || e.target.value === 'gradient' ? 'block' : 'none';
+            
+            // Force a redraw to update colors
+            this.forceDraw();
+        });
+        
+        // ===== CUSTOM COLOR INPUT HANDLERS =====
+        document.getElementById('color1').addEventListener('change', (e) => {
+            this.customColors[0] = e.target.value;
+            this.forceDraw();
+        });
+        document.getElementById('color2').addEventListener('change', (e) => {
+            this.customColors[1] = e.target.value;
+            this.forceDraw();
+        });
+        document.getElementById('color3').addEventListener('change', (e) => {
+            this.customColors[2] = e.target.value;
+            this.forceDraw();
+        });
+        
+        // ===== SCALE AND SENSITIVITY CONTROL HANDLERS WITH LIVE VALUE DISPLAY =====
+        document.getElementById('visualizerScale').addEventListener('input', (e) => {
+            this.visualizerScale = parseFloat(e.target.value);
+            document.getElementById('scaleValue').textContent = this.visualizerScale.toFixed(1) + 'x';
+            this.forceDraw();
+        });
+        
+        document.getElementById('sensitivity').addEventListener('input', (e) => {
+            this.sensitivity = parseFloat(e.target.value);
+            document.getElementById('sensitivityValue').textContent = this.sensitivity.toFixed(1) + 'x';
+            this.forceDraw();
+        });
+        
+        document.getElementById('barThickness').addEventListener('input', (e) => {
+            this.barThickness = parseFloat(e.target.value);
+            document.getElementById('thicknessValue').textContent = this.barThickness.toFixed(1) + 'x';
+            this.forceDraw();
+        });
+        
+        document.getElementById('barCount').addEventListener('input', (e) => {
+            this.barCount = parseInt(e.target.value);
+            document.getElementById('barCountValue').textContent = this.barCount;
+            this.forceDraw();
+        });
+        
+        // ===== ASPECT RATIO CONTROL HANDLERS =====
+        document.getElementById('aspectRatio').addEventListener('change', (e) => {
+            this.aspectRatio = e.target.value;
+            const customDiv = document.getElementById('customAspect');
+            customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            this.applyAspectRatioChange();
+        });
+        
+        // ===== CUSTOM DIMENSION INPUT HANDLERS =====
+        document.getElementById('customWidth').addEventListener('input', () => {
+            if (this.aspectRatio === 'custom') {
+                this.applyAspectRatioChange();
+            }
+        });
+        
+        document.getElementById('customHeight').addEventListener('input', () => {
+            if (this.aspectRatio === 'custom') {
+                this.applyAspectRatioChange();
+            }
+        });
+        
+        // ===== BACKGROUND IMAGE CONTROL HANDLERS =====
+        backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
+        clearBgBtn.addEventListener('click', () => this.clearBackground());
+        
+        // ===== BACKGROUND OPACITY AND SCALE CONTROL HANDLERS =====
+        document.getElementById('bgOpacity').addEventListener('input', (e) => {
+            this.bgOpacity = parseFloat(e.target.value);
+            document.getElementById('opacityValue').textContent = this.bgOpacity.toFixed(1);
+            this.forceDraw();
+        });
+        
+        document.getElementById('bgScale').addEventListener('input', (e) => {
+            this.bgScale = parseFloat(e.target.value);
+            document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
+            this.forceDraw();
+        });
+    }
+    
+    /**
+     * Initializes particle system for particle visualization mode
+     * Creates array of particle objects with random positions and velocities
+     * Particle count scales with visualizer scale setting
+     */
+    setupParticles() {
+        this.particles = [];
+        const particleCount = Math.floor(100 * this.visualizerScale);
+        
+        // Create particles with random properties
+        for (let i = 0; i < particleCount; i++) {
+            this.particles.push({
+                x: Math.random() * this.canvasWidth,      // Random X position
+                y: Math.random() * this.canvasHeight,     // Random Y position
+                vx: (Math.random() - 0.5) * 2,           // X velocity
+                vy: (Math.random() - 0.5) * 2,           // Y velocity
+                size: Math.random() * 3 + 1,             // Particle size
+                hue: Math.random() * 360                 // Color hue
+            });
+        }
+    }
+    
+    /**
+     * Loads and processes background image file
+     * @param {Event} event - File input change event
+     * Handles image loading with error checking and validation
+     */
+    loadBackground(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        console.log('Background file selected:', file.name, 'Size:', file.size);
+        
+        const img = new Image();
+        
+        // Success handler - store loaded image
+        img.onload = () => {
+            this.backgroundImage = img;
+            console.log('Background image loaded successfully:', img.width, 'x', img.height);
+            
+            // Force a redraw to show the background immediately
+            this.forceDraw();
+        };
+        
+        // Error handler - show user feedback
+        img.onerror = (e) => {
+            console.error('Failed to load background image:', e);
+            alert('Failed to load background image. Please try a different file.');
+            this.backgroundImage = null;
+        };
+        
+        // Load image from file
+        const url = URL.createObjectURL(file);
+        img.src = url;
+    }
+    
+    /**
+     * Clears the current background image
+     * Resets background image and file input
+     */
+    clearBackground() {
+        this.backgroundImage = null;
+        document.getElementById('backgroundImage').value = '';
+        console.log('Background cleared');
+        
+        // Force a redraw to update the view without the background
+        this.forceDraw();
+    }
+    
+    /**
+     * Loads audio file and sets up audio element
+     * @param {File} file - Audio file to load
+     * Handles multiple audio formats with error fallback
+     */
+    loadAudio(file) {
+        console.log('Loading file:', file.name, 'Type:', file.type, 'Size:', file.size);
+        
+        // Create object URL for audio element
+        const url = URL.createObjectURL(file);
+        this.audio.src = url;
+        
+        // Remove any existing event listeners to prevent duplicates
+        this.audio.removeEventListener('loadedmetadata', this.onAudioLoaded);
+        this.audio.removeEventListener('error', this.onAudioError);
+        
+        // Success handler - enable controls and update UI
+        this.onAudioLoaded = () => {
+            console.log('Audio metadata loaded successfully');
+            document.getElementById('playBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = false;
+            
+            // Update info panel with file details
+            document.querySelector('.info').innerHTML = `
+                <div style="color: #00ff88;">✓ Audio loaded: ${this.currentFileName}</div>
+                <div>Duration: ${Math.floor(this.audio.duration / 60)}:${Math.floor(this.audio.duration % 60).toString().padStart(2, '0')}</div>
+                <div>Click Play to start visualization</div>
+            `;
+        };
+        
+        // Error handler - fall back to demo mode
+        this.onAudioError = (e) => {
+            console.error('Audio loading error:', e);
+            this.startDemoVisualization();
+            document.querySelector('.info').innerHTML = `
+                <div style="color: #ff6b6b;">⚠ Audio format issue - showing demo</div>
+                <div>Try converting to standard MP3 format</div>
+                <div>Demo visualization running</div>
+            `;
+        };
+        
+        // Attach event listeners
+        this.audio.addEventListener('loadedmetadata', this.onAudioLoaded);
+        this.audio.addEventListener('error', this.onAudioError);
+    }
+    
+    /**
+     * Starts audio playback and visualization
+     * Sets up Web Audio API components for frequency analysis
+     * Handles audio context initialization and connection
+     */
+    async play() {
+        try {
+            // Initialize Web Audio API components on first play
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.analyser = this.audioContext.createAnalyser();
+                this.analyser.fftSize = 512;                    // FFT size for frequency analysis
+                this.analyser.smoothingTimeConstant = 0.8;      // Smoothing between frames
+                this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+                
+                // Connect audio element to analyser
+                this.source = this.audioContext.createMediaElementSource(this.audio);
+                this.source.connect(this.analyser);
+                this.analyser.connect(this.audioContext.destination);
+            }
+            
+            // Resume audio context if suspended (browser autoplay policy)
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+            
+            // Start audio playback
+            await this.audio.play();
+            this.startVisualization();
+            
+        } catch (error) {
+            console.error('Error playing audio:', error);
+            // Fall back to demo visualization if audio fails
+            this.startDemoVisualization();
+        }
+    }
+    
+    /**
+     * Pauses audio playback and stops visualization animation
+     */
+    pause() {
+        this.audio.pause();
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+    }
+    
+    /**
+     * Starts the main visualization animation loop
+     * Continuously analyzes audio data and renders visualization
+     */
+    startVisualization() {
+        console.log('Starting visualization with mode:', this.visualMode);
+        const animate = () => {
+            // Stop animation if audio is paused
+            if (this.audio.paused) {
+                this.animationId = null;
+                return;
+            }
+            
+            // Request next animation frame
+            this.animationId = requestAnimationFrame(animate);
+            
+            // Get frequency data and render
+            if (this.analyser && this.dataArray) {
+                this.analyser.getByteFrequencyData(this.dataArray);
+                this.draw();
+            }
+        };
+        
+        // Start animation loop
+        this.animationId = requestAnimationFrame(animate);
+    }
+    
+    /**
+     * Starts demo visualization with synthetic audio data
+     * Used when audio loading fails or for preview purposes
+     * Generates sine wave patterns to simulate audio data
+     */
+    startDemoVisualization() {
+        console.log('Starting demo visualization with mode:', this.visualMode);
+        this.dataArray = new Uint8Array(256);
+        
+        const animate = () => {
+            this.animationId = requestAnimationFrame(animate);
+            
+            // Generate synthetic frequency data using sine waves
+            const time = Date.now() * 0.001;
+            for (let i = 0; i < this.dataArray.length; i++) {
+                // Combine multiple sine waves for realistic audio simulation
+                this.dataArray[i] = Math.abs(
+                    Math.sin(time + i * 0.1) * 128 + 
+                    Math.sin(time * 2 + i * 0.05) * 64
+                );
+            }
+            
+            this.draw();
+        };
+        
+        // Start animation loop
+        this.animationId = requestAnimationFrame(animate);
+    }
+    
+    /**
+     * Samples frequency data to match the desired bar count
+     * @returns {Array} Sampled frequency data array
+     */
+    getSampledData() {
+        if (!this.dataArray) return [];
+        
+        // If bar count is greater than available data, return all data
+        if (this.barCount >= this.dataArray.length) {
+            return Array.from(this.dataArray);
+        }
+        
+        // Downsample by averaging frequency bins
+        const sampledData = [];
+        const sampleSize = this.dataArray.length / this.barCount;
+        
+        for (let i = 0; i < this.barCount; i++) {
+            const start = Math.floor(i * sampleSize);
+            const end = Math.floor((i + 1) * sampleSize);
+            let sum = 0;
+            let count = 0;
+            
+            // Average the frequency bins in this sample range
+            for (let j = start; j < end && j < this.dataArray.length; j++) {
+                sum += this.dataArray[j];
+                count++;
+            }
+            
+            sampledData.push(count > 0 ? sum / count : 0);
+        }
+        
+        return sampledData;
+    }
+    
+    /**
      * Main rendering function - draws current frame of visualization
      * Handles background rendering, scaling, and delegates to specific draw methods
      */
     draw() {
-        // Clear the canvas with the proper dimensions
+        // Clear the canvas first to prevent artifacts
         this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
         
         // ===== RENDER BACKGROUND (IMAGE OR DEFAULT) =====
@@ -237,581 +614,375 @@ class AudioVisualizer {
         
         // ===== DELEGATE TO SPECIFIC VISUALIZATION METHOD =====
         switch (this.visualMode) {
-            case 'bars': this.drawBars(); break;
-            case 'bars_mirror': this.drawBarsMirror(); break;
-            case 'bars_center': this.drawBarsCenter(); break;
-            case 'bars_radial': this.drawBarsRadial(); break;
-            case 'bars_wave': this.drawBarsWave(); break;
-            case 'bars_stacked': this.drawBarsStacked(); break;
-            case 'circle': this.drawCircle(); break;
-            case 'waveform': this.drawWaveform(); break;
-            case 'particles': this.drawParticles(); break;
-            case 'spiral': this.drawSpiral(); break;
+            case 'bars': 
+                this.drawBars(); 
+                break;
+            case 'bars_mirror': 
+                this.drawBarsMirror(); 
+                break;
+            case 'bars_center': 
+                this.drawBarsCenter(); 
+                break;
+            case 'bars_radial': 
+                this.drawBarsRadial(); 
+                break;
+            case 'bars_wave': 
+                this.drawBarsWave(); 
+                break;
+            case 'bars_stacked': 
+                this.drawBarsStacked(); 
+                break;
+            case 'circle': 
+                this.drawCircle(); 
+                break;
+            case 'waveform': 
+                this.drawWaveform(); 
+                break;
+            case 'particles': 
+                this.drawParticles(); 
+                break;
+            case 'spiral': 
+                this.drawSpiral(); 
+                break;
+            default:
+                // Fallback to mirror bars if unknown mode is selected
+                this.drawBarsMirror();
+                break;
         }
         
         this.ctx.restore();
     }
     
-    setupEventListeners() {
-        // ===== GET DOM ELEMENTS FOR EVENT BINDING =====
-        const fileInput = document.getElementById('audioFile');
-        const playBtn = document.getElementById('playBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const backgroundInput = document.getElementById('backgroundImage');
-        const clearBgBtn = document.getElementById('clearBg');
-        
-        // ===== AUDIO FILE SELECTION HANDLER =====
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                this.currentFileName = file.name;
-                this.loadAudio(file);
-            }
-        });
-        
-        // ===== PLAYBACK CONTROL HANDLERS =====
-        playBtn.addEventListener('click', () => this.play());
-        pauseBtn.addEventListener('click', () => this.pause());
-        
-        // ===== BACKGROUND IMAGE CONTROL HANDLERS =====
-        backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
-        clearBgBtn.addEventListener('click', () => this.clearBackground());
-        
-        // ===== BACKGROUND OPACITY AND SCALE CONTROL HANDLERS =====
-        document.getElementById('bgOpacity').addEventListener('input', (e) => {
-            this.bgOpacity = parseFloat(e.target.value);
-            document.getElementById('opacityValue').textContent = this.bgOpacity.toFixed(1);
-        });
-        
-        document.getElementById('bgScale').addEventListener('input', (e) => {
-            this.bgScale = parseFloat(e.target.value);
-            document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
-        });
-        
-        // ===== ASPECT RATIO CONTROL HANDLERS =====
-        document.getElementById('aspectRatio').addEventListener('change', (e) => {
-            this.aspectRatio = e.target.value;
-            const customDiv = document.getElementById('customAspect');
-            customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
-            
-            // Apply aspect ratio change and force redraw
-            this.applyAspectRatioChange();
-        });
-        
-        // ===== CUSTOM DIMENSION INPUT HANDLERS =====
-        document.getElementById('customWidth').addEventListener('input', () => {
-            if (this.aspectRatio === 'custom') {
-                this.applyAspectRatioChange();
-            }
-        });
-        
-        document.getElementById('customHeight').addEventListener('input', () => {
-            if (this.aspectRatio === 'custom') {
-                this.applyAspectRatioChange();
-            }
-        });
-    }
-    
-    loadAudio(file) {
-        console.log('Loading file:', file.name, 'Type:', file.type, 'Size:', file.size);
-        
-        const url = URL.createObjectURL(file);
-        this.audio.src = url;
-        
-        // Remove any existing event listeners to prevent duplicates
-        this.audio.removeEventListener('loadedmetadata', this.onAudioLoaded);
-        this.audio.removeEventListener('error', this.onAudioError);
-        
-        this.onAudioLoaded = () => {
-            console.log('Audio metadata loaded successfully');
-            document.getElementById('playBtn').disabled = false;
-            document.getElementById('pauseBtn').disabled = false;
-            document.getElementById('recordBtn').disabled = false; // Enable recording
-            
-            document.querySelector('.info').innerHTML = `
-                <div style="color: #00ff88;">✓ Audio loaded: ${this.currentFileName}</div>
-                <div>Duration: ${Math.floor(this.audio.duration / 60)}:${Math.floor(this.audio.duration % 60).toString().padStart(2, '0')}</div>
-                <div>Click Play to start visualization</div>
-                <div>Use 🔴 button to record visualization</div>
-            `;
-        };
-        
-        this.onAudioError = (e) => {
-            console.error('Audio loading error:', e);
-            this.startDemoVisualization();
-            document.querySelector('.info').innerHTML = `
-                <div style="color: #ff6b6b;">⚠ Audio format issue - showing demo</div>
-                <div>Try converting to standard MP3 format</div>
-                <div>Demo visualization running</div>
-            `;
-        };
-        
-        this.audio.addEventListener('loadedmetadata', this.onAudioLoaded);
-        this.audio.addEventListener('error', this.onAudioError);
-    }
-    
-    async play() {
-        try {
-            if (!this.audioContext) {
-                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                this.analyser = this.audioContext.createAnalyser();
-                this.analyser.fftSize = 512;
-                this.analyser.smoothingTimeConstant = 0.8;
-                this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-                
-                this.source = this.audioContext.createMediaElementSource(this.audio);
-                this.source.connect(this.analyser);
-                this.analyser.connect(this.audioContext.destination);
-            }
-            
-            if (this.audioContext.state === 'suspended') {
-                await this.audioContext.resume();
-            }
-            
-            await this.audio.play();
-            this.startVisualization();
-            
-        } catch (error) {
-            console.error('Error playing audio:', error);
-            this.startDemoVisualization();
-        }
-    }
-    
-    pause() {
-        this.audio.pause();
-        if (this.animationId) {
-            cancelAnimationFrame(this.animationId);
-        }
-    }
-    
-    startVisualization() {
-        console.log('Starting visualization animation loop');
-        const animate = () => {
-            // Stop animation if audio is paused
-            if (this.audio.paused) {
-                console.log('Audio paused, stopping animation');
-                return;
-            }
-            
-            // Request next animation frame
-            this.animationId = requestAnimationFrame(animate);
-            
-            // Get frequency data and render
-            if (this.analyser && this.dataArray) {
-                this.analyser.getByteFrequencyData(this.dataArray);
-                this.draw();
-            } else {
-                console.warn('Analyser or dataArray not available');
-            }
-        };
-        animate();
-    }
-    
-    startDemoVisualization() {
-        console.log('Starting demo visualization with synthetic data');
-        this.dataArray = new Uint8Array(256);
-        
-        const animate = () => {
-            this.animationId = requestAnimationFrame(animate);
-            
-            // Generate synthetic frequency data using sine waves
-            const time = Date.now() * 0.001;
-            for (let i = 0; i < this.dataArray.length; i++) {
-                this.dataArray[i] = Math.abs(
-                    Math.sin(time + i * 0.1) * 128 + 
-                    Math.sin(time * 2 + i * 0.05) * 64
-                );
-            }
-            
-            this.draw();
-        };
-        animate();
-    }
-    
+    /**
+     * Draws default loading animation when no audio data is available
+     * Simple pulsing circle with loading text
+     */
     drawDefaultAnimation() {
         const centerX = this.canvasWidth / 2;
         const centerY = this.canvasHeight / 2;
         const time = Date.now() * 0.005;
         const radius = 50 + Math.sin(time) * 20;
         
-        this.ctx.strokeStyle = '#ff6b6b';
+        // Animated pulsing circle
+        this.ctx.strokeStyle = this.getColor(time * 10, 360, 0.8);
         this.ctx.lineWidth = 3;
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         this.ctx.stroke();
         
+        // Loading text
         this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         this.ctx.font = '20px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.fillText('Loading audio data...', centerX, centerY + 100);
     }
     
-    drawBarsMirror() {
-        if (!this.dataArray) return;
-        
-        const barWidth = (this.canvasWidth / this.dataArray.length) * this.barThickness;
-        const barSpacing = this.canvasWidth / this.dataArray.length;
+    /**
+     * Generates colors based on current color mode and settings
+     * @param {number} index - Current item index for color calculation
+     * @param {number} total - Total number of items
+     * @param {number} intensity - Audio intensity (0-1) for brightness
+     * @returns {string} CSS color string
+     */
+    getColor(index, total, intensity = 1) {
+        switch (this.colorMode) {
+            case 'rainbow':
+                // HSL rainbow spectrum based on index position
+                const hue = (index / total) * 360;
+                const saturation = 70 + (intensity * 30);
+                const lightness = 50 + (intensity * 30);
+                return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            
+            case 'custom':
+                // Use predefined custom colors
+                const colorIndex = Math.floor((index / total) * this.customColors.length);
+                return this.customColors[colorIndex] || this.customColors[0];
+            
+            case 'gradient':
+                // Linear interpolation between two custom colors
+                const ratio = index / total;
+                const color1 = this.hexToRgb(this.customColors[0]);
+                const color2 = this.hexToRgb(this.customColors[1]);
+                const r = Math.floor(color1.r + (color2.r - color1.r) * ratio);
+                const g = Math.floor(color1.g + (color2.g - color1.g) * ratio);
+                const b = Math.floor(color1.b + (color2.b - color1.b) * ratio);
+                return `rgba(${r}, ${g}, ${b}, ${intensity})`;
+            
+            case 'monochrome':
+                // Single hue with varying brightness
+                const brightness = 50 + (intensity * 50);
+                return `hsl(220, 30%, ${brightness}%)`;
+            
+            default:
+                return `hsl(${(index / total) * 360}, 80%, 60%)`;
+        }
+    }
+    
+    /**
+     * Converts hex color string to RGB object
+     * @param {string} hex - Hex color string (e.g., "#ff0000")
+     * @returns {Object} RGB object with r, g, b properties
+     */
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : {r: 255, g: 107, b: 107}; // Default red if parsing fails
+    }
+    
+    // ========================================================================
+    // VISUALIZATION METHODS
+    // ========================================================================
+    
+    drawBars() {
+        const sampledData = this.getSampledData();
+        const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+        const barSpacing = this.canvasWidth / sampledData.length;
         let x = (barSpacing - barWidth) / 2;
         
-        for (let i = 0; i < this.dataArray.length; i++) {
-            const barHeight = (this.dataArray[i] / 255) * this.canvasHeight * 0.4 * this.sensitivity;
-            const centerY = this.canvasHeight / 2;
+        for (let i = 0; i < sampledData.length; i++) {
+            const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
+            const intensity = sampledData[i] / 255;
             
-            const hue = (i / this.dataArray.length) * 360;
-            this.ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+            this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
+            this.ctx.fillRect(x, this.canvasHeight - barHeight, barWidth, barHeight);
             
-            this.ctx.fillRect(x, centerY, barWidth, barHeight);
-            this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
+            this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity * 0.3);
+            this.ctx.fillRect(x, 0, barWidth, barHeight * 0.5);
             
             x += barSpacing;
         }
     }
     
-    setupParticles() {
-        // Basic particle setup
-        this.particles = [];
-    }
-    
-    /**
-     * ========================================================================
-     * BACKGROUND IMAGE MANAGEMENT
-     * ========================================================================
-     */
-    
-    /**
-     * Loads and processes background image file
-     * @param {Event} event - File input change event
-     * Handles image loading with error checking and validation
-     */
-    loadBackground(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    drawBarsMirror() {
+        const sampledData = this.getSampledData();
+        const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+        const barSpacing = this.canvasWidth / sampledData.length;
+        let x = (barSpacing - barWidth) / 2;
         
-        console.log('Background file selected:', file.name, 'Size:', file.size);
-        
-        const img = new Image();
-        
-        // Success handler - store loaded image
-        img.onload = () => {
-            this.backgroundImage = img;
-            console.log('Background image loaded successfully:', img.width, 'x', img.height);
+        for (let i = 0; i < sampledData.length; i++) {
+            const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.4 * this.sensitivity;
+            const centerY = this.canvasHeight / 2;
+            const intensity = sampledData[i] / 255;
             
-            // Force a redraw to show the background immediately
-            this.forceDraw();
-        };
-        
-        // Error handler - show user feedback
-        img.onerror = (e) => {
-            console.error('Failed to load background image:', e);
-            alert('Failed to load background image. Please try a different file.');
-            this.backgroundImage = null;
-        };
-        
-        // Load image from file
-        const url = URL.createObjectURL(file);
-        console.log('Created URL for background image:', url);
-        img.src = url;
-    }
-    
-    /**
-     * Clears the current background image
-     * Resets background image and file input
-     */
-    clearBackground() {
-        this.backgroundImage = null;
-        document.getElementById('backgroundImage').value = '';
-        console.log('Background cleared');
-        
-        // Force a redraw to update the view without the background
-        this.forceDraw();
-    }
-    
-    /**
-     * ========================================================================
-     * VIDEO RECORDING FUNCTIONALITY
-     * ========================================================================
-     * Methods for recording the audio visualization to video using
-     * MediaRecorder API with high-quality settings
-     */
-    
-    /**
-     * Sets up event listeners and controls for video recording
-     * Called during initialization
-     */
-    setupRecordingControls() {
-        const recordBtn = document.getElementById('recordBtn');
-        const stopRecordBtn = document.getElementById('stopRecordBtn');
-        const qualitySelect = document.getElementById('recordingQuality');
-        const formatSelect = document.getElementById('outputFormat');
-        const videoBitrateSlider = document.getElementById('videoBitrate');
-        const audioBitrateSlider = document.getElementById('audioBitrate');
-        
-        // Quality selection handler
-        qualitySelect.addEventListener('change', (e) => {
-            this.recordingQuality = e.target.value;
-            const customDiv = document.getElementById('customBitrate');
-            customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
+            const color = this.getColor(i, sampledData.length, intensity);
+            this.ctx.fillStyle = color;
             
-            // Set predefined bitrates
-            switch (e.target.value) {
-                case '720p':
-                    this.videoBitrate = 5;
-                    videoBitrateSlider.value = 5;
-                    document.getElementById('bitrateValue').textContent = '5 Mbps';
-                    break;
-                case '1080p':
-                    this.videoBitrate = 8;
-                    videoBitrateSlider.value = 8;
-                    document.getElementById('bitrateValue').textContent = '8 Mbps';
-                    break;
-                case '4K':
-                    this.videoBitrate = 25;
-                    videoBitrateSlider.value = 25;
-                    document.getElementById('bitrateValue').textContent = '25 Mbps';
-                    break;
-            }
-        });
-        
-        // Format selection handler
-        formatSelect.addEventListener('change', (e) => {
-            this.outputFormat = e.target.value;
-        });
-        
-        // Bitrate sliders
-        videoBitrateSlider.addEventListener('input', (e) => {
-            this.videoBitrate = parseInt(e.target.value);
-            document.getElementById('bitrateValue').textContent = this.videoBitrate + ' Mbps';
-        });
-        
-        audioBitrateSlider.addEventListener('input', (e) => {
-            this.audioBitrate = parseInt(e.target.value);
-            document.getElementById('audioBitrateValue').textContent = this.audioBitrate + ' kbps';
-        });
-        
-        // Recording control handlers
-        recordBtn.addEventListener('click', () => this.startRecording());
-        stopRecordBtn.addEventListener('click', () => this.stopRecording());
-        
-        // Enable recording button when audio is loaded
-        this.audio.addEventListener('loadedmetadata', () => {
-            recordBtn.disabled = false;
-        });
-    }
-    
-    /**
-     * Starts recording the visualization and audio
-     * Uses MediaRecorder API to capture canvas and audio streams
-     */
-    async startRecording() {
-        try {
-            // Update status
-            this.updateRecordingStatus('Preparing recording...', '#ffaa00');
+            this.ctx.fillRect(x, centerY, barWidth, barHeight);
+            this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
             
-            // Get canvas stream
-            const canvasStream = this.canvas.captureStream(60); // 60 FPS
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = color;
+            this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
+            this.ctx.fillRect(x, centerY, barWidth, barHeight);
+            this.ctx.shadowBlur = 0;
             
-            // Get audio stream if available
-            let audioStream = null;
-            if (this.audioContext && this.source) {
-                // Create a destination for recording
-                const dest = this.audioContext.createMediaStreamDestination();
-                this.source.connect(dest);
-                audioStream = dest.stream;
-            }
-            
-            // Combine streams
-            const tracks = [...canvasStream.getTracks()];
-            if (audioStream) {
-                tracks.push(...audioStream.getTracks());
-            }
-            
-            this.recordingStream = new MediaStream(tracks);
-            
-            // Determine MIME type and codec
-            const mimeType = this.getMimeType();
-            
-            // Configure MediaRecorder options
-            const options = {
-                mimeType: mimeType,
-                videoBitsPerSecond: this.videoBitrate * 1000000, // Convert to bits
-                audioBitsPerSecond: this.audioBitrate * 1000     // Convert to bits
-            };
-            
-            // Create MediaRecorder
-            this.mediaRecorder = new MediaRecorder(this.recordingStream, options);
-            
-            // Reset recorded chunks
-            this.recordedChunks = [];
-            
-            // Handle data chunks
-            this.mediaRecorder.ondataavailable = (event) => {
-                if (event.data.size > 0) {
-                    this.recordedChunks.push(event.data);
-                }
-            };
-            
-            // Handle recording stop
-            this.mediaRecorder.onstop = () => {
-                this.saveRecording();
-            };
-            
-            // Handle errors
-            this.mediaRecorder.onerror = (event) => {
-                console.error('MediaRecorder error:', event.error);
-                this.updateRecordingStatus('Recording error: ' + event.error.message, '#ff6666');
-                this.resetRecordingUI();
-            };
-            
-            // Start recording
-            this.mediaRecorder.start(100); // Collect data every 100ms
-            this.isRecording = true;
-            
-            // Update UI
-            document.getElementById('recordBtn').style.display = 'none';
-            document.getElementById('stopRecordBtn').style.display = 'inline-block';
-            document.getElementById('stopRecordBtn').disabled = false;
-            this.updateRecordingStatus('🔴 Recording...', '#ff4444');
-            
-            // Start recording timer
-            this.startRecordingTimer();
-            
-        } catch (error) {
-            console.error('Error starting recording:', error);
-            this.updateRecordingStatus('Failed to start recording: ' + error.message, '#ff6666');
-            this.resetRecordingUI();
+            x += barSpacing;
         }
     }
     
-    /**
-     * Stops the active recording and processes the recorded data
-     */
-    stopRecording() {
-        if (this.mediaRecorder && this.isRecording) {
-            this.mediaRecorder.stop();
-            this.isRecording = false;
+    drawBarsCenter() {
+        const sampledData = this.getSampledData();
+        const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+        const barSpacing = this.canvasWidth / sampledData.length;
+        const centerX = this.canvasWidth / 2;
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
+            const intensity = sampledData[i] / 255;
             
-            // Stop all tracks
-            if (this.recordingStream) {
-                this.recordingStream.getTracks().forEach(track => track.stop());
+            this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
+            
+            const leftX = centerX - (i + 1) * barSpacing + (barSpacing - barWidth) / 2;
+            if (leftX >= 0) {
+                this.ctx.fillRect(leftX, this.canvasHeight - barHeight, barWidth, barHeight);
             }
             
-            this.updateRecordingStatus('Processing video...', '#ffaa00');
-            this.resetRecordingUI();
+            const rightX = centerX + i * barSpacing + (barSpacing - barWidth) / 2;
+            if (rightX < this.canvasWidth) {
+                this.ctx.fillRect(rightX, this.canvasHeight - barHeight, barWidth, barHeight);
+            }
         }
     }
     
-    /**
-     * Saves the recorded video data as a file and initiates download
-     * Processes the collected data chunks and creates a download link
-     */
-    saveRecording() {
-        if (this.recordedChunks.length === 0) {
-            this.updateRecordingStatus('No data recorded', '#ff6666');
-            return;
+    drawBarsRadial() {
+        const sampledData = this.getSampledData();
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
+        const baseRadius = Math.min(this.canvasWidth, this.canvasHeight) * 0.15;
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const angle = (i / sampledData.length) * Math.PI * 2;
+            const barLength = (sampledData[i] / 255) * Math.min(this.canvasWidth, this.canvasHeight) * 0.3 * this.sensitivity;
+            const intensity = sampledData[i] / 255;
+            
+            const x1 = centerX + Math.cos(angle) * baseRadius;
+            const y1 = centerY + Math.sin(angle) * baseRadius;
+            const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
+            const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
+            
+            const color = this.getColor(i, sampledData.length, intensity);
+            const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, color.replace(')', ', 0.1)').replace('rgb', 'rgba'));
+            
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 4 * this.barThickness;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x1, y1);
+            this.ctx.lineTo(x2, y2);
+            this.ctx.stroke();
         }
-        
-        // Create blob from recorded chunks
-        const mimeType = this.getMimeType();
-        const blob = new Blob(this.recordedChunks, { type: mimeType });
-        
-        // Create download link
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        
-        // Generate filename
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const extension = this.outputFormat === 'mp4' ? 'mp4' : 'webm';
-        const audioName = this.currentFileName ? this.currentFileName.replace(/\.[^/.]+$/, '') : 'visualizer';
-        a.download = `${audioName}_visualized_${timestamp}.${extension}`;
-        
-        // Trigger download
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Cleanup
-        URL.revokeObjectURL(url);
-        this.recordedChunks = [];
-        
-        this.updateRecordingStatus('✅ Video saved successfully!', '#00ff88');
-        setTimeout(() => {
-            this.updateRecordingStatus('Ready to record', 'rgba(255,255,255,0.7)');
-        }, 3000);
     }
     
-    /**
-     * Determines the best MIME type and codec for recording
-     * Checks browser support and falls back to WebM if necessary
-     * @returns {string} MIME type string for MediaRecorder
-     */
-    getMimeType() {
-        // Check format support and return appropriate MIME type
-        const format = this.outputFormat;
+    drawBarsWave() {
+        const sampledData = this.getSampledData();
+        const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+        const barSpacing = this.canvasWidth / sampledData.length;
+        let x = (barSpacing - barWidth) / 2;
+        const time = Date.now() * 0.002;
         
-        if (format === 'mp4') {
-            if (MediaRecorder.isTypeSupported('video/mp4; codecs="avc1.424028,mp4a.40.2"')) {
-                return 'video/mp4; codecs="avc1.424028,mp4a.40.2"';
+        for (let i = 0; i < sampledData.length; i++) {
+            const baseHeight = (sampledData[i] / 255) * this.canvasHeight * 0.6 * this.sensitivity;
+            const wave = Math.sin(time + i * 0.1) * 20;
+            const barHeight = baseHeight + wave;
+            const intensity = sampledData[i] / 255;
+            
+            this.ctx.fillStyle = this.getColor(i + time * 50, sampledData.length, intensity);
+            this.ctx.fillRect(x, this.canvasHeight - Math.abs(barHeight), barWidth, Math.abs(barHeight));
+            
+            x += barSpacing;
+        }
+    }
+    
+    drawBarsStacked() {
+        const sampledData = this.getSampledData();
+        const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
+        const barSpacing = this.canvasWidth / sampledData.length;
+        let x = (barSpacing - barWidth) / 2;
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const totalHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
+            const segments = 5;
+            const segmentHeight = totalHeight / segments;
+            const intensity = sampledData[i] / 255;
+            
+            for (let j = 0; j < segments; j++) {
+                const alpha = 1 - (j * 0.15);
+                const color = this.getColor(i + j * 10, sampledData.length, intensity * alpha);
+                
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(x, this.canvasHeight - (j + 1) * segmentHeight, barWidth, segmentHeight - 1);
+            }
+            
+            x += barSpacing;
+        }
+    }
+    
+    drawCircle() {
+        const sampledData = this.getSampledData();
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
+        const radius = Math.min(this.canvasWidth, this.canvasHeight) * 0.2;
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const angle = (i / sampledData.length) * Math.PI * 2;
+            const amplitude = (sampledData[i] / 255) * Math.min(this.canvasWidth, this.canvasHeight) * 0.3 * this.sensitivity;
+            const intensity = sampledData[i] / 255;
+            
+            const x1 = centerX + Math.cos(angle) * radius;
+            const y1 = centerY + Math.sin(angle) * radius;
+            const x2 = centerX + Math.cos(angle) * (radius + amplitude);
+            const y2 = centerY + Math.sin(angle) * (radius + amplitude);
+            
+            this.ctx.strokeStyle = this.getColor(i, sampledData.length, intensity);
+            this.ctx.lineWidth = 3 * this.barThickness;
+            this.ctx.beginPath();
+            this.ctx.moveTo(x1, y1);
+            this.ctx.lineTo(x2, y2);
+            this.ctx.stroke();
+        }
+    }
+    
+    drawWaveform() {
+        const sampledData = this.getSampledData();
+        this.ctx.strokeStyle = this.getColor(0, 1, 1);
+        this.ctx.lineWidth = 2 * this.barThickness;
+        this.ctx.beginPath();
+        
+        const sliceWidth = this.canvasWidth / sampledData.length;
+        let x = 0;
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const v = (sampledData[i] / 128) * this.sensitivity;
+            const y = v * this.canvasHeight / 2;
+            
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+            
+            x += sliceWidth;
+        }
+        
+        this.ctx.stroke();
+    }
+    
+    drawParticles() {
+        const sampledData = this.getSampledData();
+        const avgFreq = sampledData.reduce((a, b) => a + b, 0) / sampledData.length;
+        
+        this.particles.forEach((particle, index) => {
+            const freqData = sampledData[index % sampledData.length];
+            const intensity = (freqData / 255) * this.sensitivity;
+            
+            particle.x += particle.vx * (1 + intensity);
+            particle.y += particle.vy * (1 + intensity);
+            particle.size = (1 + intensity * 5) * this.barThickness;
+            
+            if (particle.x < 0 || particle.x > this.canvasWidth) particle.vx *= -1;
+            if (particle.y < 0 || particle.y > this.canvasHeight) particle.vy *= -1;
+            
+            this.ctx.fillStyle = this.getColor(particle.hue + avgFreq, 360, intensity);
+            this.ctx.beginPath();
+            this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+    }
+    
+    drawSpiral() {
+        const sampledData = this.getSampledData();
+        const centerX = this.canvasWidth / 2;
+        const centerY = this.canvasHeight / 2;
+        
+        this.ctx.strokeStyle = this.getColor(0, 1, 1);
+        this.ctx.lineWidth = 2 * this.barThickness;
+        this.ctx.beginPath();
+        
+        for (let i = 0; i < sampledData.length; i++) {
+            const angle = (i / sampledData.length) * Math.PI * 8;
+            const amplitude = (sampledData[i] / 255) * 3 * this.sensitivity;
+            const scaleFactor = Math.min(this.canvasWidth, this.canvasHeight) * 0.003;
+            const radius = (i * scaleFactor) + (amplitude * 50);
+            
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
             }
         }
         
-        // Fallback to WebM with VP9 codec
-        if (MediaRecorder.isTypeSupported('video/webm; codecs="vp9,opus"')) {
-            return 'video/webm; codecs="vp9,opus"';
-        }
-        
-        // Basic WebM fallback
-        return 'video/webm';
-    }
-    
-    /**
-     * Updates the recording status display
-     * @param {string} message - Status message to display
-     * @param {string} color - Text color for the status message
-     */
-    updateRecordingStatus(message, color = 'rgba(255,255,255,0.7)') {
-        const statusDiv = document.getElementById('recordingStatus');
-        statusDiv.textContent = message;
-        statusDiv.style.color = color;
-    }
-    
-    /**
-     * Resets the recording UI to initial state
-     * Called after recording stops or on error
-     */
-    resetRecordingUI() {
-        document.getElementById('recordBtn').style.display = 'inline-block';
-        document.getElementById('stopRecordBtn').style.display = 'none';
-        document.getElementById('recordBtn').disabled = !this.audio.src;
-        
-        if (this.recordingTimer) {
-            clearInterval(this.recordingTimer);
-            this.recordingTimer = null;
-        }
-    }
-    
-    /**
-     * Starts a timer to show recording duration
-     * Updates status message with current duration
-     */
-    startRecordingTimer() {
-        let seconds = 0;
-        this.recordingTimer = setInterval(() => {
-            seconds++;
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
-            this.updateRecordingStatus(
-                `🔴 Recording: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`, 
-                '#ff4444'
-            );
-        }, 1000);
+        this.ctx.stroke();
     }
 }
 
 /**
- * ============================================================================
- * COLOR PRESET FUNCTION
- * ============================================================================
  * Sets predefined color schemes for quick styling
  * @param {string} preset - Preset name ('neon', 'ocean', 'sunset', 'cyberpunk')
  */
@@ -851,18 +1022,21 @@ function setColorPreset(preset) {
     }
     
     // Update visualizer with new colors
-    visualizer.customColors = [color1.value, color2.value, color3.value];
-    visualizer.colorMode = colorMode.value;
-    // Show/hide custom color controls
-    document.getElementById('customColors').style.display = 
-        colorMode.value === 'custom' || colorMode.value === 'gradient' ? 'block' : 'none';
+    if (window.visualizer) {
+        window.visualizer.customColors = [color1.value, color2.value, color3.value];
+        window.visualizer.colorMode = colorMode.value;
+        // Show/hide custom color controls
+        document.getElementById('customColors').style.display = 
+            colorMode.value === 'custom' || colorMode.value === 'gradient' ? 'block' : 'none';
+        
+        // Force a redraw to show new colors immediately
+        window.visualizer.forceDraw();
+    }
 }
 
-// ===== INITIALIZE APPLICATION =====
 // Create the main visualizer instance when page loads
 let visualizer;
-
-// Wait for DOM to be fully loaded before initializing
 document.addEventListener('DOMContentLoaded', () => {
     visualizer = new AudioVisualizer();
+    window.visualizer = visualizer; // Make it globally accessible for color presets
 });
