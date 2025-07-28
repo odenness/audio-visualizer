@@ -60,6 +60,9 @@ class AudioVisualizer {
         
         // Select the default visualization mode in the dropdown
         document.getElementById('visualMode').value = this.visualMode;
+        
+        // Apply styles to fix dropdowns with white text on white background
+        this.applyDropdownStyles();
     }
     
     /**
@@ -730,6 +733,44 @@ class AudioVisualizer {
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
         } : {r: 255, g: 107, b: 107}; // Default red if parsing fails
+    }
+    
+    /**
+     * Applies custom styles to dropdown elements to ensure visibility
+     * Fixes the white text on white background issue
+     */
+    applyDropdownStyles() {
+        // Create a style element
+        const styleEl = document.createElement('style');
+        
+        // Define styles for dropdowns
+        styleEl.textContent = `
+            select {
+                background-color: #121212;
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 14px;
+                appearance: auto;
+            }
+            
+            select:focus {
+                outline: none;
+                border-color: rgba(255, 255, 255, 0.6);
+                box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+            }
+            
+            option {
+                background-color: #121212;
+                color: white;
+            }
+        `;
+        
+        // Add the style element to the document head
+        document.head.appendChild(styleEl);
+        
+        console.log('Applied custom dropdown styles to fix white-on-white issue');
     }
     
     // ========================================================================
