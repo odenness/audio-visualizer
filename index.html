@@ -1,198 +1,165 @@
+<!--
+================================================================================
+AUDIO VISUALIZER FOR YOUTUBE - Enhanced Version
+================================================================================
+
+FUNCTIONALITY SUMMARY:
+This is a comprehensive web-based audio visualizer designed for creating engaging 
+YouTube content. It provides real-time audio analysis and visualization with 
+extensive customization options.
+
+KEY FEATURES:
+• Multi-format audio support (MP3, WAV, OGG, M4A)
+• 10+ visualization modes (bars, circular, particles, spiral, etc.)
+• Flexible aspect ratio support (16:9, 21:9, 4:3, 1:1, 9:16, custom)
+• Advanced color schemes (rainbow, gradient, custom, monochrome)
+• Background image overlay with opacity/scaling controls
+• Real-time audio analysis using Web Audio API
+• Responsive design with fullscreen support
+• Perfect for screen recording and content creation
+
+VISUALIZATION MODES:
+• Classic Bars - Traditional frequency bars
+• Mirror Bars - Symmetric bars with glow effects
+• Center Bars - Bars expanding from center
+• Radial Bars - Circular frequency display
+• Wave Bars - Animated wave motion
+• Stacked Bars - Multi-layered segments
+• Circular - Circular waveform
+• Waveform - Traditional oscilloscope view
+• Particles - Dynamic particle system
+• Spiral - Spiral frequency pattern
+
+TECHNICAL ARCHITECTURE:
+• HTML5 Canvas for high-performance rendering
+• Web Audio API for real-time frequency analysis
+• CSS3 for modern UI styling
+• Vanilla JavaScript (no external dependencies)
+• Responsive design with aspect ratio controls
+
+USAGE:
+1. Upload audio file using file input
+2. Customize visualization settings in control panels
+3. Click Play to start visualization
+4. Use screen recording software to capture output
+5. Perfect dimensions for YouTube content creation
+
+Created for content creators who need professional audio visualizations
+for their YouTube videos, podcasts, and social media content.
+================================================================================
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Audio Visualizer for YouTube - Enhanced</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e);
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-        }
-
-        #visualizer {
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 70%);
-            position: relative;
-        }
-
-        canvas {
-            display: block;
-            background: transparent;
-        }
-
-        .controls {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            max-width: 90vw;
-        }
-
-        .control-group {
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-            min-width: 200px;
-        }
-
-        .control-group h4 {
-            margin: 0 0 10px 0;
-            color: #fff;
-            font-size: 14px;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
-            padding-bottom: 5px;
-        }
-
-        input[type="file"] {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        input[type="file"]:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        input[type="range"] {
-            width: 100%;
-            margin: 5px 0;
-        }
-
-        input[type="color"] {
-            width: 40px;
-            height: 30px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 2px;
-        }
-
-        button {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 5px;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        select {
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            padding: 8px;
-            border-radius: 5px;
-            margin: 5px;
-            width: 100%;
-        }
-
-        label {
-            color: white;
-            font-size: 12px;
-            display: block;
-            margin: 5px 0 2px 0;
-        }
-
-        .color-preset {
-            display: flex;
-            gap: 5px;
-            margin: 5px 0;
-            flex-wrap: wrap;
-        }
-
-        .preset-btn {
-            padding: 5px 10px;
-            font-size: 11px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-
-        .preset-btn:hover {
-            background: rgba(255,255,255,0.2);
-            transform: none;
-            box-shadow: none;
-        }
-
-        .info {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            color: rgba(255,255,255,0.7);
-            background: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 12px;
-        }
-
-        .slider-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin: 5px 0;
-        }
-
-        .slider-group span {
-            color: white;
-            font-size: 11px;
-            min-width: 30px;
-        }
-    </style>
+    
+    <!-- External CSS file for all styling -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- 
+    ================================================================================
+    HTML STRUCTURE SECTION
+    ================================================================================
+    Main application layout with:
+    - Full-screen visualizer container
+    - Canvas element for rendering
+    - Control panels for user interaction
+    - Audio element for playback
+    ================================================================================
+    -->
+    
+    <!-- Main visualizer container -->
     <div id="visualizer">
+        <!-- Canvas for audio visualization rendering -->
         <canvas id="canvas"></canvas>
         
+        <!-- Control panels for user interaction -->
         <div class="controls">
+            <!-- ===== AUDIO FILE LOADING AND PLAYBACK CONTROLS ===== -->
             <div class="control-group">
                 <h4>📁 Audio Controls</h4>
+                <!-- File input for audio upload - accepts multiple audio formats -->
                 <input type="file" id="audioFile" accept="audio/*,.mp3,.wav,.ogg,.m4a">
+                <!-- Playback control buttons - disabled until audio is loaded -->
                 <button id="playBtn" disabled>Play</button>
                 <button id="pauseBtn" disabled>Pause</button>
             </div>
-            
+
+            <!-- ===== VIDEO RECORDING CONTROLS ===== -->
+            <div class="control-group">
+                <h4>🎥 Video Recording</h4>
+                <!-- Recording quality selection -->
+                <label>Quality:</label>
+                <select id="recordingQuality">
+                    <option value="1080p">1080p (Recommended)</option>
+                    <option value="720p">720p</option>
+                    <option value="4K">4K (High Quality)</option>
+                    <option value="custom">Custom Bitrate</option>
+                </select>
+                
+                <!-- Custom bitrate input - hidden by default -->
+                <div id="customBitrate" style="display: none; margin-top: 10px;">
+                    <div class="slider-group">
+                        <label>Video Bitrate (Mbps):</label>
+                        <input type="range" id="videoBitrate" min="2" max="50" step="1" value="8">
+                        <span id="bitrateValue">8 Mbps</span>
+                    </div>
+                    <div class="slider-group">
+                        <label>Audio Bitrate (kbps):</label>
+                        <input type="range" id="audioBitrate" min="128" max="320" step="32" value="192">
+                        <span id="audioBitrateValue">192 kbps</span>
+                    </div>
+                </div>
+                
+                <!-- Recording controls -->
+                <button id="recordBtn" disabled>🔴 Start Recording</button>
+                <button id="stopRecordBtn" disabled style="display: none;">⏹️ Stop Recording</button>
+                
+                <!-- Recording status -->
+                <div id="recordingStatus" style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
+                    Ready to record
+                </div>
+                
+                <!-- Format selection -->
+                <label style="margin-top: 10px;">Output Format:</label>
+                <select id="outputFormat">
+                    <option value="webm">WebM (Recommended)</option>
+                    <option value="mp4">MP4 (if supported)</option>
+                </select>
+            </div>
+            <!-- ===== BACKGROUND IMAGE CONTROLS ===== -->
+            <div class="control-group">
+                <h4>🖼️ Background image</h4>
+                <!-- Background image file input -->
+                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
+                <button id="clearBg">Clear BG</button>
+                
+                <!-- Background opacity control -->
+                <div class="slider-group">
+                    <label>BG Opacity:</label>
+                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
+                    <span id="opacityValue">0.7</span>
+                </div>
+                
+                <!-- Background scaling control -->
+                <div class="slider-group">
+                    <label>BG Scale:</label>
+                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
+                    <span id="bgScaleValue">1.0x</span>
+                </div>
+            </div>
+            <!-- ===== VISUALIZATION MODE SELECTION ===== -->
             <div class="control-group">
                 <h4>🎨 Visualization</h4>
                 <label>Mode:</label>
+                <!-- Dropdown for selecting visualization type -->
                 <select id="visualMode">
                     <option value="bars">Classic Bars</option>
-                    <option value="bars_mirror">Mirror Bars ⭐</option>
+                    <option value="bars_mirror">Mirror Bars ⭐</option> <!-- Default/recommended -->
                     <option value="bars_center">Center Bars</option>
                     <option value="bars_radial">Radial Bars</option>
                     <option value="bars_wave">Wave Bars</option>
@@ -204,16 +171,20 @@
                 </select>
             </div>
 
+            <!-- ===== COLOR SCHEME AND STYLING CONTROLS ===== -->
             <div class="control-group">
                 <h4>🎨 Color Scheme</h4>
                 <label>Color Mode:</label>
+                <!-- Color mode selection dropdown -->
                 <select id="colorMode">
                     <option value="rainbow">Rainbow Spectrum</option>
                     <option value="custom">Custom Colors</option>
                     <option value="gradient">Two-Color Gradient</option>
                     <option value="monochrome">Monochrome</option>
+                    <option value="imageMatched">Image Matched</option>
                 </select>
                 
+                <!-- Custom color picker section - hidden by default -->
                 <div id="customColors" style="display: none;">
                     <label>Primary:</label>
                     <input type="color" id="color1" value="#ff6b6b">
@@ -223,6 +194,7 @@
                     <input type="color" id="color3" value="#45b7d1">
                 </div>
 
+                <!-- Quick color preset buttons -->
                 <div class="color-preset">
                     <button class="preset-btn" onclick="setColorPreset('neon')">Neon</button>
                     <button class="preset-btn" onclick="setColorPreset('ocean')">Ocean</button>
@@ -231,26 +203,31 @@
                 </div>
             </div>
 
+            <!-- ===== SIZE, SCALE, AND SENSITIVITY CONTROLS ===== -->
             <div class="control-group">
                 <h4>📏 Size & Scale</h4>
+                <!-- Overall visualizer scaling -->
                 <div class="slider-group">
                     <label>Visualizer Scale:</label>
                     <input type="range" id="visualizerScale" min="0.3" max="2" step="0.1" value="1">
                     <span id="scaleValue">1.0x</span>
                 </div>
                 
+                <!-- Audio sensitivity/responsiveness -->
                 <div class="slider-group">
                     <label>Bar Sensitivity:</label>
                     <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1">
                     <span id="sensitivityValue">1.0x</span>
                 </div>
                 
+                <!-- Bar width/thickness control -->
                 <div class="slider-group">
                     <label>Bar Thickness:</label>
                     <input type="range" id="barThickness" min="0.2" max="3" step="0.1" value="1">
                     <span id="thicknessValue">1.0x</span>
                 </div>
                 
+                <!-- Number of frequency bars to display -->
                 <div class="slider-group">
                     <label>Bar Count:</label>
                     <input type="range" id="barCount" min="32" max="512" step="16" value="256">
@@ -258,18 +235,21 @@
                 </div>
             </div>
             
+            <!-- ===== ASPECT RATIO AND RESOLUTION CONTROLS ===== -->
             <div class="control-group">
                 <h4>📺 Aspect Ratio</h4>
+                <!-- Aspect ratio selection for different content types -->
                 <select id="aspectRatio">
                     <option value="fullscreen">Fullscreen</option>
-                    <option value="16:9">16:9 (1920x1080)</option>
+                    <option value="16:9">16:9 (1920x1080)</option> <!-- Standard YouTube -->
                     <option value="21:9">21:9 (Ultrawide)</option>
                     <option value="4:3">4:3 (Classic)</option>
-                    <option value="1:1">1:1 (Square)</option>
-                    <option value="9:16">9:16 (Vertical/Mobile)</option>
+                    <option value="1:1">1:1 (Square)</option> <!-- Instagram -->
+                    <option value="9:16">9:16 (Vertical/Mobile)</option> <!-- TikTok, Stories -->
                     <option value="custom">Custom</option>
                 </select>
                 
+                <!-- Custom dimension inputs - shown only when custom is selected -->
                 <div id="customAspect" style="display: none; margin-top: 10px;">
                     <div class="slider-group">
                         <label>Width:</label>
@@ -279,30 +259,24 @@
                     </div>
                 </div>
                 
+                <!-- UI Transparency control -->
+                <div class="slider-group" style="margin-top: 10px;">
+                    <label>UI Transparency:</label>
+                    <input type="range" id="uiTransparency" min="0" max="0.99" step="0.05" value="0">
+                    <span id="transparencyValue">0%</span>
+                </div>
+                
+                <!-- Current resolution display -->
                 <div style="margin-top: 10px; font-size: 11px; color: rgba(255,255,255,0.7);">
                     Current: <span id="currentResolution">Fullscreen</span>
                 </div>
             </div>
             
-            <div class="control-group">
-                <h4>🖼️ Background</h4>
-                <input type="file" id="backgroundImage" accept="image/*" style="font-size: 12px; padding: 5px;">
-                <button id="clearBg">Clear BG</button>
-                
-                <div class="slider-group">
-                    <label>BG Opacity:</label>
-                    <input type="range" id="bgOpacity" min="0.1" max="1" step="0.1" value="0.7">
-                    <span id="opacityValue">0.7</span>
-                </div>
-                
-                <div class="slider-group">
-                    <label>BG Scale:</label>
-                    <input type="range" id="bgScale" min="0.5" max="2" step="0.1" value="1">
-                    <span id="bgScaleValue">1.0x</span>
-                </div>
-            </div>
+            
         </div>
 
+        <!-- ===== INFORMATION DISPLAY PANEL ===== -->
+        <!-- Bottom-right info panel with usage instructions and status -->
         <div class="info">
             <div>Upload an audio file to start visualizing</div>
             <div>Supported formats: MP3, WAV, OGG, M4A</div>
@@ -310,744 +284,79 @@
         </div>
     </div>
 
+    <!-- Hidden audio element for playback -->
     <audio id="audio" style="display: none;"></audio>
 
-    <script>
-        class AudioVisualizer {
-            constructor() {
-                this.canvas = document.getElementById('canvas');
-                this.ctx = this.canvas.getContext('2d');
-                this.audio = document.getElementById('audio');
-                this.audioContext = null;
-                this.analyser = null;
-                this.dataArray = null;
-                this.source = null;
-                this.animationId = null;
-                this.currentFileName = '';
-                this.backgroundImage = null;
-                
-                this.particles = [];
-                this.visualMode = 'bars_mirror';
-                this.colorMode = 'rainbow';
-                this.customColors = ['#ff6b6b', '#4ecdc4', '#45b7d1'];
-                this.visualizerScale = 1;
-                this.sensitivity = 1;
-                this.bgOpacity = 0.7;
-                this.bgScale = 1;
-                this.barThickness = 1;
-                this.barCount = 256;
-                this.aspectRatio = 'fullscreen';
-                this.canvasWidth = window.innerWidth;
-                this.canvasHeight = window.innerHeight;
-                
-                this.setupCanvas();
-                this.setupEventListeners();
-                this.setupParticles();
-            }
-            
-            setupCanvas() {
-                this.updateCanvasSize();
-                
-                window.addEventListener('resize', () => {
-                    if (this.aspectRatio === 'fullscreen') {
-                        this.updateCanvasSize();
-                    }
-                });
-            }
-            
-            updateCanvasSize() {
-                switch (this.aspectRatio) {
-                    case 'fullscreen':
-                        this.canvasWidth = window.innerWidth;
-                        this.canvasHeight = window.innerHeight;
-                        break;
-                    case '16:9':
-                        const width16_9 = Math.min(window.innerWidth, window.innerHeight * (16/9));
-                        this.canvasWidth = width16_9;
-                        this.canvasHeight = width16_9 * (9/16);
-                        break;
-                    case '21:9':
-                        const width21_9 = Math.min(window.innerWidth, window.innerHeight * (21/9));
-                        this.canvasWidth = width21_9;
-                        this.canvasHeight = width21_9 * (9/21);
-                        break;
-                    case '4:3':
-                        const width4_3 = Math.min(window.innerWidth, window.innerHeight * (4/3));
-                        this.canvasWidth = width4_3;
-                        this.canvasHeight = width4_3 * (3/4);
-                        break;
-                    case '1:1':
-                        const size1_1 = Math.min(window.innerWidth, window.innerHeight);
-                        this.canvasWidth = size1_1;
-                        this.canvasHeight = size1_1;
-                        break;
-                    case '9:16':
-                        const height9_16 = Math.min(window.innerHeight, window.innerWidth * (16/9));
-                        this.canvasHeight = height9_16;
-                        this.canvasWidth = height9_16 * (9/16);
-                        break;
-                    case 'custom':
-                        this.canvasWidth = parseInt(document.getElementById('customWidth').value) || 1920;
-                        this.canvasHeight = parseInt(document.getElementById('customHeight').value) || 1080;
-                        const scale = Math.min(window.innerWidth / this.canvasWidth, window.innerHeight / this.canvasHeight);
-                        if (scale < 1) {
-                            this.canvasWidth *= scale;
-                            this.canvasHeight *= scale;
-                        }
-                        break;
-                }
-                
-                this.canvas.width = this.canvasWidth;
-                this.canvas.height = this.canvasHeight;
-                
-                this.canvas.style.position = 'absolute';
-                this.canvas.style.left = '50%';
-                this.canvas.style.top = '50%';
-                this.canvas.style.transform = 'translate(-50%, -50%)';
-                this.canvas.style.border = this.aspectRatio !== 'fullscreen' ? '2px solid rgba(255,255,255,0.3)' : 'none';
-                
-                document.getElementById('currentResolution').textContent = `${Math.round(this.canvasWidth)} × ${Math.round(this.canvasHeight)}`;
-            }
-            
-            setupEventListeners() {
-                const fileInput = document.getElementById('audioFile');
-                const playBtn = document.getElementById('playBtn');
-                const pauseBtn = document.getElementById('pauseBtn');
-                const visualMode = document.getElementById('visualMode');
-                const colorMode = document.getElementById('colorMode');
-                const backgroundInput = document.getElementById('backgroundImage');
-                const clearBgBtn = document.getElementById('clearBg');
-                
-                fileInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        this.currentFileName = file.name;
-                        this.loadAudio(file);
-                    }
-                });
-                
-                playBtn.addEventListener('click', () => this.play());
-                pauseBtn.addEventListener('click', () => this.pause());
-                
-                visualMode.addEventListener('change', (e) => {
-                    this.visualMode = e.target.value;
-                    if (this.visualMode === 'particles') {
-                        this.setupParticles();
-                    }
-                });
-                
-                colorMode.addEventListener('change', (e) => {
-                    this.colorMode = e.target.value;
-                    const customDiv = document.getElementById('customColors');
-                    customDiv.style.display = e.target.value === 'custom' || e.target.value === 'gradient' ? 'block' : 'none';
-                });
-                
-                document.getElementById('color1').addEventListener('change', (e) => {
-                    this.customColors[0] = e.target.value;
-                });
-                document.getElementById('color2').addEventListener('change', (e) => {
-                    this.customColors[1] = e.target.value;
-                });
-                document.getElementById('color3').addEventListener('change', (e) => {
-                    this.customColors[2] = e.target.value;
-                });
-                
-                document.getElementById('visualizerScale').addEventListener('input', (e) => {
-                    this.visualizerScale = parseFloat(e.target.value);
-                    document.getElementById('scaleValue').textContent = this.visualizerScale.toFixed(1) + 'x';
-                });
-                
-                document.getElementById('sensitivity').addEventListener('input', (e) => {
-                    this.sensitivity = parseFloat(e.target.value);
-                    document.getElementById('sensitivityValue').textContent = this.sensitivity.toFixed(1) + 'x';
-                });
-                
-                document.getElementById('barThickness').addEventListener('input', (e) => {
-                    this.barThickness = parseFloat(e.target.value);
-                    document.getElementById('thicknessValue').textContent = this.barThickness.toFixed(1) + 'x';
-                });
-                
-                document.getElementById('barCount').addEventListener('input', (e) => {
-                    this.barCount = parseInt(e.target.value);
-                    document.getElementById('barCountValue').textContent = this.barCount;
-                });
-                
-                document.getElementById('aspectRatio').addEventListener('change', (e) => {
-                    this.aspectRatio = e.target.value;
-                    const customDiv = document.getElementById('customAspect');
-                    customDiv.style.display = e.target.value === 'custom' ? 'block' : 'none';
-                    this.updateCanvasSize();
-                });
-                
-                document.getElementById('customWidth').addEventListener('input', () => {
-                    if (this.aspectRatio === 'custom') {
-                        this.updateCanvasSize();
-                    }
-                });
-                
-                document.getElementById('customHeight').addEventListener('input', () => {
-                    if (this.aspectRatio === 'custom') {
-                        this.updateCanvasSize();
-                    }
-                });
-                
-                backgroundInput.addEventListener('change', (e) => this.loadBackground(e));
-                clearBgBtn.addEventListener('click', () => this.clearBackground());
-                
-                document.getElementById('bgOpacity').addEventListener('input', (e) => {
-                    this.bgOpacity = parseFloat(e.target.value);
-                    document.getElementById('opacityValue').textContent = this.bgOpacity.toFixed(1);
-                });
-                
-                document.getElementById('bgScale').addEventListener('input', (e) => {
-                    this.bgScale = parseFloat(e.target.value);
-                    document.getElementById('bgScaleValue').textContent = this.bgScale.toFixed(1) + 'x';
-                });
-            }
-            
-            setupParticles() {
-                this.particles = [];
-                const particleCount = Math.floor(100 * this.visualizerScale);
-                for (let i = 0; i < particleCount; i++) {
-                    this.particles.push({
-                        x: Math.random() * this.canvasWidth,
-                        y: Math.random() * this.canvasHeight,
-                        vx: (Math.random() - 0.5) * 2,
-                        vy: (Math.random() - 0.5) * 2,
-                        size: Math.random() * 3 + 1,
-                        hue: Math.random() * 360
-                    });
-                }
-            }
-            
-            loadBackground(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                const img = new Image();
-                img.onload = () => {
-                    this.backgroundImage = img;
-                    console.log('Background image loaded');
-                };
-                img.onerror = () => {
-                    console.error('Failed to load background image');
-                    alert('Failed to load background image. Please try a different file.');
-                };
-                img.src = URL.createObjectURL(file);
-            }
-            
-            clearBackground() {
-                this.backgroundImage = null;
-                document.getElementById('backgroundImage').value = '';
-                console.log('Background cleared');
-            }
-            
-            getColor(index, total, intensity = 1) {
-                switch (this.colorMode) {
-                    case 'rainbow':
-                        const hue = (index / total) * 360;
-                        const saturation = 70 + (intensity * 30);
-                        const lightness = 50 + (intensity * 30);
-                        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-                    
-                    case 'custom':
-                        const colorIndex = Math.floor((index / total) * this.customColors.length);
-                        return this.customColors[colorIndex] || this.customColors[0];
-                    
-                    case 'gradient':
-                        const ratio = index / total;
-                        const color1 = this.hexToRgb(this.customColors[0]);
-                        const color2 = this.hexToRgb(this.customColors[1]);
-                        const r = Math.floor(color1.r + (color2.r - color1.r) * ratio);
-                        const g = Math.floor(color1.g + (color2.g - color1.g) * ratio);
-                        const b = Math.floor(color1.b + (color2.b - color1.b) * ratio);
-                        return `rgba(${r}, ${g}, ${b}, ${intensity})`;
-                    
-                    case 'monochrome':
-                        const brightness = 50 + (intensity * 50);
-                        return `hsl(220, 30%, ${brightness}%)`;
-                    
-                    default:
-                        return `hsl(${(index / total) * 360}, 80%, 60%)`;
-                }
-            }
-            
-            hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : {r: 255, g: 107, b: 107};
-            }
-            
-            loadAudio(file) {
-                console.log('Loading file:', file.name, 'Type:', file.type, 'Size:', file.size);
-                
-                const url = URL.createObjectURL(file);
-                this.audio.src = url;
-                
-                this.audio.addEventListener('loadedmetadata', () => {
-                    console.log('Audio metadata loaded successfully');
-                    document.getElementById('playBtn').disabled = false;
-                    document.getElementById('pauseBtn').disabled = false;
-                    
-                    document.querySelector('.info').innerHTML = `
-                        <div style="color: #00ff88;">✓ Audio loaded: ${this.currentFileName}</div>
-                        <div>Duration: ${Math.floor(this.audio.duration / 60)}:${Math.floor(this.audio.duration % 60).toString().padStart(2, '0')}</div>
-                        <div>Click Play to start visualization</div>
-                    `;
-                });
-                
-                this.audio.addEventListener('error', (e) => {
-                    console.error('Audio loading error:', e);
-                    this.startDemoVisualization();
-                    document.querySelector('.info').innerHTML = `
-                        <div style="color: #ff6b6b;">⚠ Audio format issue - showing demo</div>
-                        <div>Try converting to standard MP3 format</div>
-                        <div>Demo visualization running</div>
-                    `;
-                });
-            }
-            
-            async play() {
-                try {
-                    if (!this.audioContext) {
-                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        this.analyser = this.audioContext.createAnalyser();
-                        this.analyser.fftSize = 512;
-                        this.analyser.smoothingTimeConstant = 0.8;
-                        this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-                        
-                        this.source = this.audioContext.createMediaElementSource(this.audio);
-                        this.source.connect(this.analyser);
-                        this.analyser.connect(this.audioContext.destination);
-                    }
-                    
-                    if (this.audioContext.state === 'suspended') {
-                        await this.audioContext.resume();
-                    }
-                    
-                    await this.audio.play();
-                    this.startVisualization();
-                    
-                } catch (error) {
-                    console.error('Error playing audio:', error);
-                    this.startDemoVisualization();
-                }
-            }
-            
-            pause() {
-                this.audio.pause();
-                if (this.animationId) {
-                    cancelAnimationFrame(this.animationId);
-                }
-            }
-            
-            startVisualization() {
-                const animate = () => {
-                    if (this.audio.paused) return;
-                    this.animationId = requestAnimationFrame(animate);
-                    
-                    if (this.analyser && this.dataArray) {
-                        this.analyser.getByteFrequencyData(this.dataArray);
-                        this.draw();
-                    }
-                };
-                animate();
-            }
-            
-            startDemoVisualization() {
-                this.dataArray = new Uint8Array(256);
-                
-                const animate = () => {
-                    this.animationId = requestAnimationFrame(animate);
-                    
-                    const time = Date.now() * 0.001;
-                    for (let i = 0; i < this.dataArray.length; i++) {
-                        this.dataArray[i] = Math.abs(Math.sin(time + i * 0.1) * 128 + Math.sin(time * 2 + i * 0.05) * 64);
-                    }
-                    
-                    this.draw();
-                };
-                animate();
-            }
-            
-            draw() {
-                if (this.backgroundImage) {
-                    this.ctx.globalAlpha = this.bgOpacity;
-                    const scaledWidth = this.canvasWidth * this.bgScale;
-                    const scaledHeight = this.canvasHeight * this.bgScale;
-                    const offsetX = (this.canvasWidth - scaledWidth) / 2;
-                    const offsetY = (this.canvasHeight - scaledHeight) / 2;
-                    this.ctx.drawImage(this.backgroundImage, offsetX, offsetY, scaledWidth, scaledHeight);
-                    this.ctx.globalAlpha = 1.0;
-                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-                } else {
-                    this.ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
-                    this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-                }
-                
-                this.ctx.save();
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                this.ctx.translate(centerX, centerY);
-                this.ctx.scale(this.visualizerScale, this.visualizerScale);
-                this.ctx.translate(-centerX, -centerY);
-                
-                if (!this.dataArray || this.dataArray.every(val => val === 0)) {
-                    this.drawDefaultAnimation();
-                    this.ctx.restore();
-                    return;
-                }
-                
-                switch (this.visualMode) {
-                    case 'bars': this.drawBars(); break;
-                    case 'bars_mirror': this.drawBarsMirror(); break;
-                    case 'bars_center': this.drawBarsCenter(); break;
-                    case 'bars_radial': this.drawBarsRadial(); break;
-                    case 'bars_wave': this.drawBarsWave(); break;
-                    case 'bars_stacked': this.drawBarsStacked(); break;
-                    case 'circle': this.drawCircle(); break;
-                    case 'waveform': this.drawWaveform(); break;
-                    case 'particles': this.drawParticles(); break;
-                    case 'spiral': this.drawSpiral(); break;
-                }
-                
-                this.ctx.restore();
-            }
-            
-            drawDefaultAnimation() {
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                const time = Date.now() * 0.005;
-                const radius = 50 + Math.sin(time) * 20;
-                
-                this.ctx.strokeStyle = this.getColor(time * 10, 360, 0.8);
-                this.ctx.lineWidth = 3;
-                this.ctx.beginPath();
-                this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-                this.ctx.stroke();
-                
-                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-                this.ctx.font = '20px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('Loading audio data...', centerX, centerY + 100);
-            }
-            
-            getSampledData() {
-                if (!this.dataArray) return [];
-                
-                if (this.barCount >= this.dataArray.length) {
-                    return Array.from(this.dataArray);
-                }
-                
-                const sampledData = [];
-                const sampleSize = this.dataArray.length / this.barCount;
-                
-                for (let i = 0; i < this.barCount; i++) {
-                    const start = Math.floor(i * sampleSize);
-                    const end = Math.floor((i + 1) * sampleSize);
-                    let sum = 0;
-                    let count = 0;
-                    
-                    for (let j = start; j < end && j < this.dataArray.length; j++) {
-                        sum += this.dataArray[j];
-                        count++;
-                    }
-                    
-                    sampledData.push(count > 0 ? sum / count : 0);
-                }
-                
-                return sampledData;
-            }
-            
-            drawBars() {
-                const sampledData = this.getSampledData();
-                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
-                const barSpacing = this.canvasWidth / sampledData.length;
-                let x = (barSpacing - barWidth) / 2;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
-                    const intensity = sampledData[i] / 255;
-                    
-                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
-                    this.ctx.fillRect(x, this.canvasHeight - barHeight, barWidth, barHeight);
-                    
-                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity * 0.3);
-                    this.ctx.fillRect(x, 0, barWidth, barHeight * 0.5);
-                    
-                    x += barSpacing;
-                }
-            }
-            
-            drawBarsMirror() {
-                const sampledData = this.getSampledData();
-                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
-                const barSpacing = this.canvasWidth / sampledData.length;
-                let x = (barSpacing - barWidth) / 2;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.4 * this.sensitivity;
-                    const centerY = this.canvasHeight / 2;
-                    const intensity = sampledData[i] / 255;
-                    
-                    const color = this.getColor(i, sampledData.length, intensity);
-                    this.ctx.fillStyle = color;
-                    
-                    this.ctx.fillRect(x, centerY, barWidth, barHeight);
-                    this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
-                    
-                    this.ctx.shadowBlur = 10;
-                    this.ctx.shadowColor = color;
-                    this.ctx.fillRect(x, centerY - barHeight, barWidth, barHeight);
-                    this.ctx.fillRect(x, centerY, barWidth, barHeight);
-                    this.ctx.shadowBlur = 0;
-                    
-                    x += barSpacing;
-                }
-            }
-            
-            drawBarsCenter() {
-                const sampledData = this.getSampledData();
-                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
-                const barSpacing = this.canvasWidth / sampledData.length;
-                const centerX = this.canvasWidth / 2;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const barHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
-                    const intensity = sampledData[i] / 255;
-                    
-                    this.ctx.fillStyle = this.getColor(i, sampledData.length, intensity);
-                    
-                    const leftX = centerX - (i + 1) * barSpacing + (barSpacing - barWidth) / 2;
-                    if (leftX >= 0) {
-                        this.ctx.fillRect(leftX, this.canvasHeight - barHeight, barWidth, barHeight);
-                    }
-                    
-                    const rightX = centerX + i * barSpacing + (barSpacing - barWidth) / 2;
-                    if (rightX < this.canvasWidth) {
-                        this.ctx.fillRect(rightX, this.canvasHeight - barHeight, barWidth, barHeight);
-                    }
-                }
-            }
-            
-            drawBarsRadial() {
-                const sampledData = this.getSampledData();
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                const baseRadius = 80;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const angle = (i / sampledData.length) * Math.PI * 2;
-                    const barLength = (sampledData[i] / 255) * 200 * this.sensitivity;
-                    const intensity = sampledData[i] / 255;
-                    
-                    const x1 = centerX + Math.cos(angle) * baseRadius;
-                    const y1 = centerY + Math.sin(angle) * baseRadius;
-                    const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
-                    const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
-                    
-                    const color = this.getColor(i, sampledData.length, intensity);
-                    const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
-                    gradient.addColorStop(0, color);
-                    gradient.addColorStop(1, color.replace(')', ', 0.1)').replace('rgb', 'rgba'));
-                    
-                    this.ctx.strokeStyle = gradient;
-                    this.ctx.lineWidth = 4 * this.barThickness;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x1, y1);
-                    this.ctx.lineTo(x2, y2);
-                    this.ctx.stroke();
-                }
-            }
-            
-            drawBarsWave() {
-                const sampledData = this.getSampledData();
-                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
-                const barSpacing = this.canvasWidth / sampledData.length;
-                let x = (barSpacing - barWidth) / 2;
-                const time = Date.now() * 0.002;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const baseHeight = (sampledData[i] / 255) * this.canvasHeight * 0.6 * this.sensitivity;
-                    const wave = Math.sin(time + i * 0.1) * 20;
-                    const barHeight = baseHeight + wave;
-                    const intensity = sampledData[i] / 255;
-                    
-                    this.ctx.fillStyle = this.getColor(i + time * 50, sampledData.length, intensity);
-                    this.ctx.fillRect(x, this.canvasHeight - Math.abs(barHeight), barWidth, Math.abs(barHeight));
-                    
-                    x += barSpacing;
-                }
-            }
-            
-            drawBarsStacked() {
-                const sampledData = this.getSampledData();
-                const barWidth = (this.canvasWidth / sampledData.length) * this.barThickness;
-                const barSpacing = this.canvasWidth / sampledData.length;
-                let x = (barSpacing - barWidth) / 2;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const totalHeight = (sampledData[i] / 255) * this.canvasHeight * 0.8 * this.sensitivity;
-                    const segments = 5;
-                    const segmentHeight = totalHeight / segments;
-                    const intensity = sampledData[i] / 255;
-                    
-                    for (let j = 0; j < segments; j++) {
-                        const alpha = 1 - (j * 0.15);
-                        const color = this.getColor(i + j * 10, sampledData.length, intensity * alpha);
-                        
-                        this.ctx.fillStyle = color;
-                        this.ctx.fillRect(x, this.canvasHeight - (j + 1) * segmentHeight, barWidth, segmentHeight - 1);
-                    }
-                    
-                    x += barSpacing;
-                }
-            }
-            
-            drawCircle() {
-                const sampledData = this.getSampledData();
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                const radius = 100;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const angle = (i / sampledData.length) * Math.PI * 2;
-                    const amplitude = (sampledData[i] / 255) * 200 * this.sensitivity;
-                    const intensity = sampledData[i] / 255;
-                    
-                    const x1 = centerX + Math.cos(angle) * radius;
-                    const y1 = centerY + Math.sin(angle) * radius;
-                    const x2 = centerX + Math.cos(angle) * (radius + amplitude);
-                    const y2 = centerY + Math.sin(angle) * (radius + amplitude);
-                    
-                    this.ctx.strokeStyle = this.getColor(i, sampledData.length, intensity);
-                    this.ctx.lineWidth = 3 * this.barThickness;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(x1, y1);
-                    this.ctx.lineTo(x2, y2);
-                    this.ctx.stroke();
-                }
-            }
-            
-            drawWaveform() {
-                const sampledData = this.getSampledData();
-                this.ctx.strokeStyle = this.getColor(0, 1, 1);
-                this.ctx.lineWidth = 2 * this.barThickness;
-                this.ctx.beginPath();
-                
-                const sliceWidth = this.canvasWidth / sampledData.length;
-                let x = 0;
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const v = (sampledData[i] / 128) * this.sensitivity;
-                    const y = v * this.canvasHeight / 2;
-                    
-                    if (i === 0) {
-                        this.ctx.moveTo(x, y);
-                    } else {
-                        this.ctx.lineTo(x, y);
-                    }
-                    
-                    x += sliceWidth;
-                }
-                
-                this.ctx.stroke();
-            }
-            
-            drawParticles() {
-                const sampledData = this.getSampledData();
-                const avgFreq = sampledData.reduce((a, b) => a + b) / sampledData.length;
-                
-                this.particles.forEach((particle, index) => {
-                    const freqData = sampledData[index % sampledData.length];
-                    const intensity = (freqData / 255) * this.sensitivity;
-                    
-                    particle.x += particle.vx * (1 + intensity);
-                    particle.y += particle.vy * (1 + intensity);
-                    particle.size = (1 + intensity * 5) * this.barThickness;
-                    
-                    if (particle.x < 0 || particle.x > this.canvasWidth) particle.vx *= -1;
-                    if (particle.y < 0 || particle.y > this.canvasHeight) particle.vy *= -1;
-                    
-                    this.ctx.fillStyle = this.getColor(particle.hue + avgFreq, 360, intensity);
-                    this.ctx.beginPath();
-                    this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                    this.ctx.fill();
-                });
-            }
-            
-            drawSpiral() {
-                const sampledData = this.getSampledData();
-                const centerX = this.canvasWidth / 2;
-                const centerY = this.canvasHeight / 2;
-                
-                this.ctx.strokeStyle = this.getColor(0, 1, 1);
-                this.ctx.lineWidth = 2 * this.barThickness;
-                this.ctx.beginPath();
-                
-                for (let i = 0; i < sampledData.length; i++) {
-                    const angle = (i / sampledData.length) * Math.PI * 8;
-                    const amplitude = (sampledData[i] / 255) * 3 * this.sensitivity;
-                    const radius = i * 2 + amplitude * 50;
-                    
-                    const x = centerX + Math.cos(angle) * radius;
-                    const y = centerY + Math.sin(angle) * radius;
-                    
-                    if (i === 0) {
-                        this.ctx.moveTo(x, y);
-                    } else {
-                        this.ctx.lineTo(x, y);
-                    }
-                }
-                
-                this.ctx.stroke();
-            }
+    <!-- External JavaScript file for all functionality -->
+    <script src="script.js"></script>
+
+    <style>
+        /* ===== CONSISTENT WIDTH FOR ALL CONTROL GROUPS ===== */
+        .control-group {
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            margin: 0; /* Remove vertical gap between control groups */
+            border-radius: 8px;
+            border-left: 3px solid rgba(255,255,255,0.3);
+            width: 350px; /* Fixed width for all control groups */
+            box-sizing: border-box; /* Include padding in width calculation */
         }
         
-        function setColorPreset(preset) {
-            const color1 = document.getElementById('color1');
-            const color2 = document.getElementById('color2');
-            const color3 = document.getElementById('color3');
-            const colorMode = document.getElementById('colorMode');
-            
-            switch (preset) {
-                case 'neon':
-                    color1.value = '#ff0080';
-                    color2.value = '#00ff80';
-                    color3.value = '#8000ff';
-                    colorMode.value = 'custom';
-                    break;
-                case 'ocean':
-                    color1.value = '#006994';
-                    color2.value = '#00a8cc';
-                    color3.value = '#b3e5fc';
-                    colorMode.value = 'gradient';
-                    break;
-                case 'sunset':
-                    color1.value = '#ff4081';
-                    color2.value = '#ff8a50';
-                    color3.value = '#ffcc02';
-                    colorMode.value = 'gradient';
-                    break;
-                case 'cyberpunk':
-                    color1.value = '#ff006e';
-                    color2.value = '#00ffff';
-                    color3.value = '#ffbe0b';
-                    colorMode.value = 'custom';
-                    break;
-            }
-            
-            visualizer.customColors = [color1.value, color2.value, color3.value];
-            visualizer.colorMode = colorMode.value;
-            document.getElementById('customColors').style.display = 
-                colorMode.value === 'custom' || colorMode.value === 'gradient' ? 'block' : 'none';
+        /* Ensure controls container doesn't restrict width */
+        .controls {
+            width: auto;
+            min-width: 370px; /* Slightly larger than control groups for padding */
         }
         
-        const visualizer = new AudioVisualizer();
-    </script>
+        /* Make sure all input elements fit within the fixed width */
+        .control-group input[type="range"] {
+            flex: 1;
+            max-width: 120px;
+        }
+        
+        .control-group select {
+            width: 100%;
+            max-width: 200px;
+        }
+        
+        .control-group input[type="file"] {
+            width: 100%;
+            max-width: 250px;
+        }
+        
+        /* Ensure custom dimension inputs don't overflow */
+        #customAspect input {
+            width: 70px !important;
+        }
+        
+        /* ===== INFO PANEL STYLING ===== */
+        /* Bottom-right information display */
+        .info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.7);
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+
+        /* ===== SLIDER GROUP LAYOUT ===== */
+        /* Horizontal layout for slider controls with labels and values */
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        /* Value display spans for sliders */
+        .slider-group span {
+            color: white;
+            font-size: 11px;
+            min-width: 30px; /* Consistent width for alignment */
+        }
+    </style>
 </body>
 </html>
